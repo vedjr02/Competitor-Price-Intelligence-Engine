@@ -129,4 +129,13 @@
   html {
     @apply font-sans;
   }
+  .recharts-cartesian-axis-tick-value {
+    fill: #94a3b8;
+  }
+  .recharts-cartesian-grid line {
+    stroke: #334155;
+  }
+  .recharts-tooltip-cursor {
+    stroke: #475569;
+  }
 }
