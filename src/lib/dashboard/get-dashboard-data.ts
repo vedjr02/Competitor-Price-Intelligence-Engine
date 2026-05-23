@@ -13,6 +13,7 @@ import {
   calculateVolatilityPercent,
 } from "@/lib/analytics/volatility";
 import type { ProgressMetric } from "@/components/tremor-blocks/intelligence-progress-cards";
+import { buildDemoDashboardData } from "@/lib/dashboard/demo-data";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type { PriceHistory, Product } from "@/types/database";
 
@@ -51,6 +52,7 @@ export type DashboardData = {
   productCount: number;
   snapshotCount: number;
   isLiveData: boolean;
+  isDemoData?: boolean;
 };
 
 function hasSupabaseConfig() {
@@ -61,24 +63,7 @@ function hasSupabaseConfig() {
 }
 
 function buildEmptyDashboard(): DashboardData {
-  return {
-    trends: [],
-    volatilities: [],
-    arbitrageSpreads: [],
-    trackedProducts: [],
-    costComparison: [],
-    costComparisonSummary: [],
-    progressMetrics: buildProgressMetrics({
-      productCount: 0,
-      snapshotCount: 0,
-      scrapedProducts: 0,
-      avgVolatility: 0,
-      arbitrageCount: 0,
-    }),
-    productCount: 0,
-    snapshotCount: 0,
-    isLiveData: hasSupabaseConfig(),
-  };
+  return buildDemoDashboardData();
 }
 
 function buildProgressMetrics(input: {
@@ -139,7 +124,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     .returns<Product[]>();
 
   if (productsError || !products?.length) {
-    return buildEmptyDashboard();
+    return buildDemoDashboardData();
   }
 
   const productIds = products.map((product) => product.id);
@@ -154,6 +139,10 @@ export async function getDashboardData(): Promise<DashboardData> {
 
   const productMap = new Map(products.map((product) => [product.id, product]));
   const historyEntries = history ?? [];
+
+  if (historyEntries.length === 0) {
+    return buildDemoDashboardData();
+  }
 
   const trends: TrendPoint[] = historyEntries.map((entry) => {
     const product = productMap.get(entry.product_id)!;
