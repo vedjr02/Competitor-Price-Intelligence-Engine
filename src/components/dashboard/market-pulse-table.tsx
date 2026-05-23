@@ -1,23 +1,15 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-
-import { ScrapeButton } from "@/components/products/scrape-button";
-import { Badge } from "@/components/ui/badge";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import {
   Table,
   TableBody,
   TableCell,
   TableHead,
-  TableHeader,
+  TableHeaderCell,
   TableRow,
-} from "@/components/ui/table";
+} from "@tremor/react";
+
+import { ScrapeButton } from "@/components/products/scrape-button";
 import type { TrackedProductRow } from "@/lib/dashboard/get-dashboard-data";
 
 type MarketPulseTableProps = {
@@ -31,57 +23,60 @@ const currency = new Intl.NumberFormat("en-IE", {
 
 export function MarketPulseTable({ products }: MarketPulseTableProps) {
   return (
-    <Card className="border-border/60 bg-card/70 backdrop-blur">
-      <CardHeader className="flex flex-row items-start justify-between gap-4">
+    <div className="rounded-tremor-default border border-dark-tremor-border bg-dark-tremor-background p-6 shadow-dark-tremor-card">
+      <div className="flex flex-row items-start justify-between gap-4">
         <div>
-          <CardTitle>Market Pulse</CardTitle>
-          <CardDescription>
+          <h3 className="font-medium text-dark-tremor-content-strong">
+            Market pulse
+          </h3>
+          <p className="text-tremor-default text-dark-tremor-content">
             Latest captured prices and short-term movement across tracked rivals.
-          </CardDescription>
+          </p>
         </div>
         <Link
           href="/products"
-          className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
+          className="inline-flex items-center gap-1 text-tremor-default font-medium text-dark-tremor-brand hover:underline"
         >
           Manage products
           <ArrowRight className="size-4" />
         </Link>
-      </CardHeader>
-      <CardContent>
+      </div>
+
+      <div className="mt-6">
         {products.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-border/60 p-8 text-center">
-            <p className="text-sm text-muted-foreground">
+          <div className="rounded-tremor-default border border-dashed border-dark-tremor-border p-8 text-center">
+            <p className="text-tremor-default text-dark-tremor-content">
               No live market data yet. Add products and run a scrape to populate
               this view.
             </p>
             <div className="mt-4 flex justify-center gap-3">
               <Link
                 href="/products"
-                className="text-sm font-medium text-primary hover:underline"
+                className="text-tremor-default font-medium text-dark-tremor-brand hover:underline"
               >
                 Add first product
               </Link>
-              <ScrapeButton label="Scrape All" variant="default" size="default" />
+              <ScrapeButton label="Scrape all" variant="default" size="default" />
             </div>
           </div>
         ) : (
           <Table>
-            <TableHeader>
+            <TableHead>
               <TableRow>
-                <TableHead>Product</TableHead>
-                <TableHead>Competitor</TableHead>
-                <TableHead>Latest</TableHead>
-                <TableHead>Change</TableHead>
-                <TableHead className="text-right">Action</TableHead>
+                <TableHeaderCell>Product</TableHeaderCell>
+                <TableHeaderCell>Competitor</TableHeaderCell>
+                <TableHeaderCell>Latest</TableHeaderCell>
+                <TableHeaderCell>Change</TableHeaderCell>
+                <TableHeaderCell className="text-right">Action</TableHeaderCell>
               </TableRow>
-            </TableHeader>
+            </TableHead>
             <TableBody>
               {products.map((product) => (
                 <TableRow key={product.id}>
-                  <TableCell className="font-medium">{product.name}</TableCell>
-                  <TableCell>
-                    <Badge variant="secondary">{product.competitor}</Badge>
+                  <TableCell className="font-medium text-dark-tremor-content-strong">
+                    {product.name}
                   </TableCell>
+                  <TableCell>{product.competitor}</TableCell>
                   <TableCell>
                     {product.latestPrice != null
                       ? currency.format(product.latestPrice)
@@ -92,10 +87,10 @@ export function MarketPulseTable({ products }: MarketPulseTableProps) {
                       <span
                         className={
                           product.priceChangePercent > 0
-                            ? "text-rose-300"
+                            ? "text-rose-400"
                             : product.priceChangePercent < 0
-                              ? "text-emerald-300"
-                              : "text-muted-foreground"
+                              ? "text-emerald-400"
+                              : "text-dark-tremor-content"
                         }
                       >
                         {product.priceChangePercent > 0 ? "+" : ""}
@@ -113,7 +108,7 @@ export function MarketPulseTable({ products }: MarketPulseTableProps) {
             </TableBody>
           </Table>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
