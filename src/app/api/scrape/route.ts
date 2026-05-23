@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+import { evaluatePriceAlerts } from "@/lib/alerts/evaluate-alerts";
+import { logScrapeRun } from "@/lib/scraper/log-scrape-run";
 import { scrapePriceFromUrl } from "@/lib/scraper/scrape-price";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
@@ -9,6 +11,8 @@ type ScrapeRequestBody = {
 };
 
 export async function POST(request: Request) {
+  const startedAt = new Date().toISOString();
+
   try {
     const body = (await request.json()) as ScrapeRequestBody;
     const { productId, selector } = body;
@@ -37,6 +41,14 @@ export async function POST(request: Request) {
       );
     }
 
+    const { data: previousRecord } = await supabase
+      .from("price_history")
+      .select("price")
+      .eq("product_id", productId)
+      .order("scraped_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
     const { price, rawText } = await scrapePriceFromUrl({
       url: product.url,
       selector: resolvedSelector,
@@ -62,13 +74,38 @@ export async function POST(request: Request) {
       .update({ updated_at: new Date().toISOString() })
       .eq("id", productId);
 
+    const triggeredAlerts = await evaluatePriceAlerts(
+      productId,
+      price,
+      previousRecord ? Number(previousRecord.price) : null,
+    );
+
+    await logScrapeRun({
+      runType: "single",
+      productsScraped: 1,
+      productsFailed: 0,
+      startedAt,
+      details: { productId, price, alerts: triggeredAlerts.length },
+    });
+
     return NextResponse.json({
       success: true,
       price,
       rawText,
       record: priceRecord,
+      triggeredAlerts,
     });
   } catch (error) {
+    await logScrapeRun({
+      runType: "single",
+      productsScraped: 0,
+      productsFailed: 1,
+      startedAt,
+      details: {
+        error: error instanceof Error ? error.message : "Scrape failed",
+      },
+    });
+
     const message = error instanceof Error ? error.message : "Scrape failed";
     return NextResponse.json({ error: message }, { status: 500 });
   }
