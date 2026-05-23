@@ -1,7 +1,7 @@
 "use client";
 
+import { Loader2, RefreshCw, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { Loader2, RefreshCw } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -22,10 +22,12 @@ export function ScrapeButton({
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [isError, setIsError] = useState(false);
 
   async function handleScrape() {
     setLoading(true);
     setMessage(null);
+    setIsError(false);
 
     try {
       const endpoint = productId ? "/api/scrape" : "/api/scrape/batch";
@@ -41,13 +43,26 @@ export function ScrapeButton({
       }
 
       if (productId) {
-        setMessage(`€${Number(data.price).toFixed(2)} captured`);
+        setMessage(`Captured ${Number(data.price).toFixed(2)}`);
       } else {
-        setMessage(`${data.scraped}/${data.total} products updated`);
+        const failures = (data.results ?? []).filter(
+          (result: { success: boolean }) => !result.success,
+        );
+
+        if (data.scraped === 0 && failures.length > 0) {
+          setIsError(true);
+          setMessage(
+            failures[0]?.error ??
+              `0/${data.total} updated — all scrapes failed`,
+          );
+        } else {
+          setMessage(`${data.scraped}/${data.total} products updated`);
+        }
       }
 
       router.refresh();
     } catch (error) {
+      setIsError(true);
       setMessage(error instanceof Error ? error.message : "Scrape failed");
     } finally {
       setLoading(false);
@@ -62,6 +77,7 @@ export function ScrapeButton({
         size={size}
         disabled={loading}
         onClick={handleScrape}
+        className="rounded-xl font-bold"
       >
         {loading ? (
           <Loader2 className="size-4 animate-spin" />
@@ -71,8 +87,70 @@ export function ScrapeButton({
         {label ?? (productId ? "Scrape" : "Scrape All")}
       </Button>
       {message ? (
-        <span className="max-w-48 text-xs text-muted-foreground">{message}</span>
+        <span
+          className={`max-w-56 text-xs ${isError ? "text-rose-400" : "text-slate-400"}`}
+        >
+          {message}
+        </span>
       ) : null}
     </div>
+  );
+}
+
+type DeleteProductButtonProps = {
+  productId: string;
+  productName: string;
+};
+
+export function DeleteProductButton({
+  productId,
+  productName,
+}: DeleteProductButtonProps) {
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
+
+  async function handleDelete() {
+    const confirmed = window.confirm(
+      `Remove "${productName}" from tracking? This deletes its price history and alerts.`,
+    );
+
+    if (!confirmed) return;
+
+    setLoading(true);
+
+    try {
+      const response = await fetch(`/api/products/${productId}`, {
+        method: "DELETE",
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error ?? "Delete failed");
+      }
+
+      router.refresh();
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "Delete failed");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      size="sm"
+      disabled={loading}
+      onClick={handleDelete}
+      className="rounded-xl border-rose-400/20 text-rose-300 hover:bg-rose-500/10 hover:text-rose-200"
+    >
+      {loading ? (
+        <Loader2 className="size-4 animate-spin" />
+      ) : (
+        <Trash2 className="size-4" />
+      )}
+      Remove
+    </Button>
   );
 }

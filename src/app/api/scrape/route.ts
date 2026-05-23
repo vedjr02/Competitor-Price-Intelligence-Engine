@@ -25,7 +25,7 @@ export async function POST(request: Request) {
 
     const { data: product, error: productError } = await supabase
       .from("products")
-      .select("id, url, price_selector")
+      .select("id, url, price_selector, sku")
       .eq("id", productId)
       .single();
 
@@ -73,6 +73,18 @@ export async function POST(request: Request) {
       .from("products")
       .update({ updated_at: new Date().toISOString() })
       .eq("id", productId);
+
+    if (!product.sku) {
+      const asinMatch = product.url.match(
+        /\/(?:dp|gp\/product|exec\/obidos\/ASIN)\/([A-Z0-9]{10})/i,
+      );
+      if (asinMatch?.[1]) {
+        await supabase
+          .from("products")
+          .update({ sku: asinMatch[1].toUpperCase() })
+          .eq("id", productId);
+      }
+    }
 
     const triggeredAlerts = await evaluatePriceAlerts(
       productId,

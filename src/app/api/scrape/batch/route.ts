@@ -13,7 +13,7 @@ export async function POST() {
 
     const { data: products, error } = await supabase
       .from("products")
-      .select("id, url, price_selector, name, competitor");
+      .select("id, url, price_selector, name, competitor, sku");
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
@@ -58,6 +58,18 @@ export async function POST() {
           .from("products")
           .update({ updated_at: new Date().toISOString() })
           .eq("id", product.id);
+
+        if (!product.sku) {
+          const asinMatch = product.url.match(
+            /\/(?:dp|gp\/product|exec\/obidos\/ASIN)\/([A-Z0-9]{10})/i,
+          );
+          if (asinMatch?.[1]) {
+            await supabase
+              .from("products")
+              .update({ sku: asinMatch[1].toUpperCase() })
+              .eq("id", product.id);
+          }
+        }
 
         const triggeredAlerts = await evaluatePriceAlerts(
           product.id,
