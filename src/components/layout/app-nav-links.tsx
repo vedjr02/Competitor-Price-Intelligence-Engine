@@ -6,11 +6,11 @@ import { usePathname } from "next/navigation";
 import { appNavItems } from "@/components/layout/nav-config";
 import { classNames } from "@/lib/tremor/class-names";
 
-export function MobileNav() {
+export function AppNavLinks() {
   const pathname = usePathname();
 
   return (
-    <nav className="flex gap-2 border-b border-white/10 bg-slate-950/80 px-3 py-2 backdrop-blur-xl xl:hidden">
+    <nav className="flex flex-1 flex-col gap-1 p-3">
       {appNavItems.map(({ href, label, icon: Icon }) => {
         const active = pathname === href || pathname.startsWith(`${href}/`);
 
@@ -19,13 +19,13 @@ export function MobileNav() {
             key={href}
             href={href}
             className={classNames(
-              "flex flex-1 flex-col items-center justify-center gap-1 rounded-xl px-2 py-2 text-[11px] font-bold",
+              "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold transition",
               active
-                ? "bg-blue-500/15 text-blue-200"
-                : "text-slate-500 hover:bg-white/5 hover:text-slate-300",
+                ? "bg-blue-500/15 text-blue-200 shadow-inner shadow-blue-500/10"
+                : "text-slate-400 hover:bg-white/5 hover:text-white",
             )}
           >
-            <Icon className="size-4" />
+            <Icon className="size-4 shrink-0" />
             {label}
           </Link>
         );
