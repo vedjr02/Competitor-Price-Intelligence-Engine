@@ -14,16 +14,24 @@ export async function getScrapeHistory(limit = 50) {
     return { history: [], runs: [] };
   }
 
-  const entries: ScrapeHistoryEntry[] = history.map((row) => ({
-    id: row.id,
-    product_id: row.product_id,
-    product_name: row.products.name,
-    competitor: row.products.competitor,
-    sku: row.products.sku,
-    price: Number(row.price),
-    scraped_at: row.scraped_at,
-    raw_selector: row.raw_selector,
-  }));
+  const entries: ScrapeHistoryEntry[] = history.map((row) => {
+    const product = row.products as {
+      name: string;
+      competitor: string;
+      sku: string | null;
+    };
+
+    return {
+      id: row.id,
+      product_id: row.product_id,
+      product_name: product.name,
+      competitor: product.competitor,
+      sku: product.sku,
+      price: Number(row.price),
+      scraped_at: row.scraped_at,
+      raw_selector: row.raw_selector,
+    };
+  });
 
   const { data: runs } = await supabase
     .from("scrape_runs")

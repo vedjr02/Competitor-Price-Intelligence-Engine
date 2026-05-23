@@ -20,16 +20,24 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: historyError.message }, { status: 500 });
     }
 
-    const entries: ScrapeHistoryEntry[] = (history ?? []).map((row) => ({
-      id: row.id,
-      product_id: row.product_id,
-      product_name: row.products.name,
-      competitor: row.products.competitor,
-      sku: row.products.sku,
-      price: Number(row.price),
-      scraped_at: row.scraped_at,
-      raw_selector: row.raw_selector,
-    }));
+    const entries: ScrapeHistoryEntry[] = (history ?? []).map((row) => {
+      const product = row.products as {
+        name: string;
+        competitor: string;
+        sku: string | null;
+      };
+
+      return {
+        id: row.id,
+        product_id: row.product_id,
+        product_name: product.name,
+        competitor: product.competitor,
+        sku: product.sku,
+        price: Number(row.price),
+        scraped_at: row.scraped_at,
+        raw_selector: row.raw_selector,
+      };
+    });
 
     const { data: runs, error: runsError } = await supabase
       .from("scrape_runs")
