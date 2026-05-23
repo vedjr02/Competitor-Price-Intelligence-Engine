@@ -55,7 +55,7 @@ export function AppShell({ catalog, children }: AppShellProps) {
             </p>
             <p className="mt-1 text-sm font-bold text-white">Automated tracking</p>
             <p className="mt-1 text-xs leading-5 text-slate-400">
-              Cron captures every 6h once deployed on Vercel.
+              Cron captures once daily on Vercel (free plan).
             </p>
           </div>
           <Link

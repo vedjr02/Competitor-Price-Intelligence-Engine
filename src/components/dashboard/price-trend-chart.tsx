@@ -39,7 +39,7 @@ export function PriceTrendChart({
       <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.02] px-6 py-10 text-center">
         <p className="text-sm font-bold text-slate-300">Building price history</p>
         <p className="mt-2 text-sm text-slate-500">
-          Each scrape adds a point. Scheduled captures run every 6 hours on
+          Each scrape adds a point. Scheduled captures run once daily on
           Vercel.
         </p>
       </div>
