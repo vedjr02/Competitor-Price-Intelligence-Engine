@@ -14,6 +14,7 @@ import {
 } from "@/lib/analytics/volatility";
 import type { ProgressMetric } from "@/components/tremor-blocks/intelligence-progress-cards";
 import type { ProductOption } from "@/lib/products/selection";
+import { getUserIdOrNull } from "@/lib/auth/get-profile";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type { PriceHistory, Product } from "@/types/database";
 
@@ -181,13 +182,19 @@ export async function getDashboardData(
   }
 
   const supabase = createServerSupabaseClient();
+  const userId = await getUserIdOrNull();
   const since = new Date();
   since.setDate(since.getDate() - 30);
 
-  const { data: products, error: productsError } = await supabase
-    .from("products")
-    .select("*")
-    .returns<Product[]>();
+  let productsQuery = supabase.from("products").select("*");
+
+  if (userId) {
+    productsQuery = productsQuery.eq("user_id", userId);
+  }
+
+  const { data: products, error: productsError } = await productsQuery.returns<
+    Product[]
+  >();
 
   if (productsError || !products?.length) {
     return buildEmptyDashboard();

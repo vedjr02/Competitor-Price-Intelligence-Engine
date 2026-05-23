@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { getCurrentUser } from "@/lib/auth/get-session";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type { PriceAlert } from "@/types/database";
 
@@ -55,12 +56,18 @@ export async function POST(request: Request) {
       );
     }
 
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json({ error: "Sign in required" }, { status: 401 });
+    }
+
     const supabase = createServerSupabaseClient();
 
     const { data, error } = await supabase
       .from("price_alerts")
       .insert({
         product_id: productId,
+        user_id: user.id,
         alert_type: alertType,
         threshold,
       })

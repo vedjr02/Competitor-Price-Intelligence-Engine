@@ -1,3 +1,4 @@
+import { getUserIdOrNull } from "@/lib/auth/get-profile";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type { ProductWithLatestPrice } from "@/types/database";
 
@@ -5,11 +6,17 @@ export async function getProductsWithLatestPrices(): Promise<
   ProductWithLatestPrice[]
 > {
   const supabase = createServerSupabaseClient();
+  const userId = await getUserIdOrNull();
 
-  const { data: products, error } = await supabase
-    .from("products")
-    .select("*")
-    .order("updated_at", { ascending: false });
+  let query = supabase.from("products").select("*").order("updated_at", {
+    ascending: false,
+  });
+
+  if (userId) {
+    query = query.eq("user_id", userId);
+  }
+
+  const { data: products, error } = await query;
 
   if (error || !products?.length) {
     return [];

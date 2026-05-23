@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 
+import { getUserIdOrNull } from "@/lib/auth/get-profile";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type { Product } from "@/types/database";
 
@@ -22,11 +23,18 @@ export async function getSelectedProductId(): Promise<string | null> {
 
 export async function getProductCatalog(): Promise<ProductCatalog> {
   const supabase = createServerSupabaseClient();
+  const userId = await getUserIdOrNull();
 
-  const { data: products } = await supabase
+  let query = supabase
     .from("products")
     .select("id, name, competitor, sku, currency, url")
     .order("created_at", { ascending: false });
+
+  if (userId) {
+    query = query.eq("user_id", userId);
+  }
+
+  const { data: products } = await query;
 
   const list = products ?? [];
   const selectedId = await getSelectedProductId();

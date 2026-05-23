@@ -6,6 +6,7 @@ export type Product = {
   url: string;
   currency: string;
   price_selector: string;
+  user_id: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -29,6 +30,7 @@ export type AlertType = "below" | "above" | "change_percent";
 export type PriceAlert = {
   id: string;
   product_id: string;
+  user_id: string | null;
   alert_type: AlertType;
   threshold: number;
   is_active: boolean;

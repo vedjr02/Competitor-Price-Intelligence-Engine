@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { getCurrentUser } from "@/lib/auth/get-session";
 import { SELECTED_PRODUCT_COOKIE } from "@/lib/products/selection";
 import { captureProductPrice } from "@/lib/scraper/capture-product-price";
 import { logScrapeRun } from "@/lib/scraper/log-scrape-run";
@@ -20,6 +21,12 @@ export async function POST(request: Request) {
     }
 
     const listing = await parseListingFromUrl(body.url);
+    const user = await getCurrentUser();
+
+    if (!user) {
+      return NextResponse.json({ error: "Sign in required" }, { status: 401 });
+    }
+
     const supabase = createServerSupabaseClient();
 
     const { data, error } = await supabase
@@ -31,6 +38,7 @@ export async function POST(request: Request) {
         sku: listing.sku,
         currency: listing.currency,
         price_selector: listing.price_selector,
+        user_id: user.id,
       })
       .select("*")
       .single();

@@ -3,18 +3,21 @@
 import Link from "next/link";
 import { Package, Sparkles } from "lucide-react";
 
+import { UserMenu } from "@/components/auth/user-menu";
 import { AppNavLinks } from "@/components/layout/app-nav-links";
 import { AppTopBar } from "@/components/layout/app-top-bar";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { ProductSwitcher } from "@/components/layout/product-switcher";
+import type { UserProfile } from "@/lib/auth/get-profile";
 import type { ProductCatalog } from "@/lib/products/selection";
 
 type AppShellProps = {
   catalog: ProductCatalog;
+  profile: UserProfile | null;
   children: React.ReactNode;
 };
 
-export function AppShell({ catalog, children }: AppShellProps) {
+export function AppShell({ catalog, profile, children }: AppShellProps) {
   return (
     <div className="relative flex min-h-full flex-1 flex-col xl:flex-row">
       <div
@@ -49,6 +52,13 @@ export function AppShell({ catalog, children }: AppShellProps) {
         <AppNavLinks />
 
         <div className="mt-auto space-y-3 border-t border-white/[0.06] p-4">
+          {profile ? (
+            <UserMenu
+              email={profile.email}
+              fullName={profile.full_name}
+              avatarUrl={profile.avatar_url}
+            />
+          ) : null}
           <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.07] p-4">
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-400">
               Sync integrity
