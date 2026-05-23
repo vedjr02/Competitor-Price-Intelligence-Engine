@@ -1,4 +1,6 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Competitor Price Intelligence Engine
+
+Next.js (App Router) + TypeScript + Tailwind CSS foundation for competitor price tracking and market arbitrage analysis.
 
 ## Getting Started
 
