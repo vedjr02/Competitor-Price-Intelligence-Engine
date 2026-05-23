@@ -3,6 +3,55 @@ import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type { Product } from "@/types/database";
 
+type CreateProductBody = {
+  name: string;
+  competitor: string;
+  url: string;
+  sku?: string;
+  currency?: string;
+  price_selector?: string;
+};
+
+export async function POST(request: Request) {
+  try {
+    const body = (await request.json()) as CreateProductBody;
+    const { name, competitor, url, sku, currency, price_selector } = body;
+
+    if (!name || !competitor || !url) {
+      return NextResponse.json(
+        { error: "name, competitor, and url are required" },
+        { status: 400 },
+      );
+    }
+
+    const supabase = createServerSupabaseClient();
+
+    const { data, error } = await supabase
+      .from("products")
+      .insert({
+        name,
+        competitor,
+        url,
+        sku: sku ?? null,
+        currency: currency ?? "EUR",
+        price_selector:
+          price_selector ??
+          '.price, [itemprop="price"], .a-price .a-offscreen',
+      })
+      .select("*")
+      .single();
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ product: data }, { status: 201 });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Create failed";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
 export async function GET() {
   try {
     const supabase = createServerSupabaseClient();
