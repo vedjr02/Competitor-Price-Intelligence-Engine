@@ -3,6 +3,17 @@ import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type { PriceAlert } from "@/types/database";
 
+function formatAlertsError(message: string) {
+  if (
+    message.includes("price_alerts") &&
+    (message.includes("does not exist") || message.includes("Could not find"))
+  ) {
+    return "Alerts table missing. Run supabase/migrations/004_create_price_alerts.sql in your Supabase SQL editor.";
+  }
+
+  return message;
+}
+
 export async function GET() {
   try {
     const supabase = createServerSupabaseClient();
@@ -13,7 +24,10 @@ export async function GET() {
       .order("created_at", { ascending: false });
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json(
+        { error: formatAlertsError(error.message) },
+        { status: 500 },
+      );
     }
 
     return NextResponse.json({ alerts: data ?? [] });
@@ -54,7 +68,10 @@ export async function POST(request: Request) {
       .single();
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json(
+        { error: formatAlertsError(error.message) },
+        { status: 500 },
+      );
     }
 
     return NextResponse.json({ alert: data }, { status: 201 });

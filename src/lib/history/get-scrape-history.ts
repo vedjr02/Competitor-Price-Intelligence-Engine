@@ -1,14 +1,20 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type { ScrapeHistoryEntry } from "@/types/database";
 
-export async function getScrapeHistory(limit = 50) {
+export async function getScrapeHistory(limit = 50, productId?: string | null) {
   const supabase = createServerSupabaseClient();
 
-  const { data: history, error: historyError } = await supabase
+  let query = supabase
     .from("price_history")
     .select("id, product_id, price, scraped_at, raw_selector, products(name, competitor, sku)")
     .order("scraped_at", { ascending: false })
     .limit(limit);
+
+  if (productId) {
+    query = query.eq("product_id", productId);
+  }
+
+  const { data: history, error: historyError } = await query;
 
   if (historyError || !history) {
     return { history: [], runs: [] };

@@ -1,11 +1,10 @@
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeaderCell,
-  TableRow,
-} from "@tremor/react";
+import { GlassPanel } from "@/components/ui/glass-panel";
+
+type AlertProduct = {
+  name: string;
+  competitor: string;
+  sku: string | null;
+};
 
 type AlertRow = {
   id: string;
@@ -14,16 +13,20 @@ type AlertRow = {
   is_active: boolean;
   last_triggered_at: string | null;
   created_at: string;
-  products: {
-    name: string;
-    competitor: string;
-    sku: string | null;
-  };
+  products: AlertProduct | AlertProduct[] | null;
 };
 
 type AlertsListProps = {
   alerts: AlertRow[];
 };
+
+function resolveProduct(alert: AlertRow): AlertProduct {
+  if (Array.isArray(alert.products)) {
+    return alert.products[0] ?? { name: "Unknown", competitor: "—", sku: null };
+  }
+
+  return alert.products ?? { name: "Unknown", competitor: "—", sku: null };
+}
 
 function formatAlertType(type: string) {
   if (type === "below") return "Price below";
@@ -41,55 +44,74 @@ function formatThreshold(type: string, threshold: number) {
 
 export function AlertsList({ alerts }: AlertsListProps) {
   return (
-    <div className="rounded-tremor-default border border-dark-tremor-border bg-dark-tremor-background p-6 shadow-dark-tremor-card">
-      <h3 className="font-medium text-dark-tremor-content-strong">
-        Active alert rules
-      </h3>
-      <p className="text-tremor-default text-dark-tremor-content">
+    <GlassPanel className="p-6">
+      <h3 className="text-xl font-bold text-white">Active alert rules</h3>
+      <p className="mt-1 text-sm text-slate-400">
         Rules evaluated automatically after each scrape run.
       </p>
 
       <div className="mt-6">
         {alerts.length === 0 ? (
-          <p className="text-tremor-default text-dark-tremor-content">
-            No alerts configured yet.
-          </p>
+          <p className="text-sm text-slate-400">No alerts configured yet.</p>
         ) : (
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableHeaderCell>Product</TableHeaderCell>
-                <TableHeaderCell>Competitor</TableHeaderCell>
-                <TableHeaderCell>Rule</TableHeaderCell>
-                <TableHeaderCell>Threshold</TableHeaderCell>
-                <TableHeaderCell>Last triggered</TableHeaderCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {alerts.map((alert) => (
-                <TableRow key={alert.id}>
-                  <TableCell className="font-medium text-dark-tremor-content-strong">
-                    {alert.products.name}
-                  </TableCell>
-                  <TableCell>{alert.products.competitor}</TableCell>
-                  <TableCell>{formatAlertType(alert.alert_type)}</TableCell>
-                  <TableCell>
-                    {formatThreshold(alert.alert_type, Number(alert.threshold))}
-                  </TableCell>
-                  <TableCell>
-                    {alert.last_triggered_at
-                      ? new Intl.DateTimeFormat("en-IE", {
-                          dateStyle: "medium",
-                          timeStyle: "short",
-                        }).format(new Date(alert.last_triggered_at))
-                      : "Never"}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <div className="space-y-3">
+            {alerts.map((alert) => {
+              const product = resolveProduct(alert);
+
+              return (
+                <div
+                  key={alert.id}
+                  className="rounded-xl border border-white/10 bg-white/[0.02] p-4"
+                >
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="font-bold text-white">{product.name}</p>
+                      <p className="text-sm text-slate-400">
+                        {product.competitor}
+                        {product.sku ? ` · ${product.sku}` : ""}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap gap-4 text-sm">
+                      <div>
+                        <p className="text-xs uppercase tracking-[0.16em] text-slate-500">
+                          Rule
+                        </p>
+                        <p className="font-bold text-slate-200">
+                          {formatAlertType(alert.alert_type)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs uppercase tracking-[0.16em] text-slate-500">
+                          Threshold
+                        </p>
+                        <p className="font-bold text-slate-200">
+                          {formatThreshold(
+                            alert.alert_type,
+                            Number(alert.threshold),
+                          )}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs uppercase tracking-[0.16em] text-slate-500">
+                          Last triggered
+                        </p>
+                        <p className="font-bold text-slate-200">
+                          {alert.last_triggered_at
+                            ? new Intl.DateTimeFormat("en-IE", {
+                                dateStyle: "medium",
+                                timeStyle: "short",
+                              }).format(new Date(alert.last_triggered_at))
+                            : "Never"}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         )}
       </div>
-    </div>
+    </GlassPanel>
   );
 }

@@ -1,12 +1,18 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
-export async function getAlerts() {
+export async function getAlerts(productId?: string | null) {
   const supabase = createServerSupabaseClient();
 
-  const { data, error } = await supabase
+  let query = supabase
     .from("price_alerts")
     .select("*, products(name, competitor, sku)")
     .order("created_at", { ascending: false });
+
+  if (productId) {
+    query = query.eq("product_id", productId);
+  }
+
+  const { data, error } = await query;
 
   if (error || !data) return [];
 

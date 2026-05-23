@@ -3,24 +3,37 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import { classNames } from "@/lib/tremor/class-names";
-import type { AlertType } from "@/types/database";
+import { GlassPanel } from "@/components/ui/glass-panel";
+import { Button } from "@/components/ui/button";
 
 type AddAlertFormProps = {
   products: Array<{ id: string; name: string; competitor: string }>;
+  selectedProductId?: string | null;
 };
 
-export function AddAlertForm({ products }: AddAlertFormProps) {
+export function AddAlertForm({
+  products,
+  selectedProductId,
+}: AddAlertFormProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setLoading(true);
     setError(null);
+    setSuccess(null);
 
     const formData = new FormData(event.currentTarget);
+    const threshold = Number(formData.get("threshold"));
+
+    if (!Number.isFinite(threshold) || threshold < 0) {
+      setError("Enter a valid threshold");
+      setLoading(false);
+      return;
+    }
 
     try {
       const response = await fetch("/api/alerts", {
@@ -29,13 +42,14 @@ export function AddAlertForm({ products }: AddAlertFormProps) {
         body: JSON.stringify({
           productId: formData.get("productId"),
           alertType: formData.get("alertType"),
-          threshold: Number(formData.get("threshold")),
+          threshold,
         }),
       });
 
       const data = await response.json();
       if (!response.ok) throw new Error(data.error ?? "Failed to create alert");
 
+      setSuccess("Alert created — it will fire after the next price capture.");
       event.currentTarget.reset();
       router.refresh();
     } catch (submitError) {
@@ -49,25 +63,25 @@ export function AddAlertForm({ products }: AddAlertFormProps) {
     }
   }
 
+  const defaultProductId = selectedProductId ?? products[0]?.id ?? "";
+
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="rounded-tremor-default border border-dark-tremor-border bg-dark-tremor-background p-6 shadow-dark-tremor-card"
-    >
-      <h3 className="font-medium text-dark-tremor-content-strong">
-        Create price alert
-      </h3>
-      <p className="mt-1 text-tremor-default text-dark-tremor-content">
-        Trigger when price crosses a threshold or moves by a percentage.
+    <GlassPanel className="p-6" glow>
+      <h3 className="text-xl font-bold text-white">Create price alert</h3>
+      <p className="mt-1 text-sm text-slate-400">
+        Alerts run automatically after each scrape for the selected product.
       </p>
 
-      <div className="mt-6 grid gap-4 md:grid-cols-3">
+      <form onSubmit={handleSubmit} className="mt-6 grid gap-4 md:grid-cols-3">
         <label className="space-y-2">
-          <span className="text-tremor-label text-dark-tremor-content">Product</span>
+          <span className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
+            Product
+          </span>
           <select
             name="productId"
             required
-            className="w-full rounded-tremor-default border border-dark-tremor-border bg-slate-950 px-3 py-2 text-tremor-default text-dark-tremor-content-strong"
+            defaultValue={defaultProductId}
+            className="w-full rounded-xl border border-white/10 bg-slate-950/80 px-3 py-2.5 text-sm text-white"
           >
             <option value="">Select product</option>
             {products.map((product) => (
@@ -79,12 +93,14 @@ export function AddAlertForm({ products }: AddAlertFormProps) {
         </label>
 
         <label className="space-y-2">
-          <span className="text-tremor-label text-dark-tremor-content">Alert type</span>
+          <span className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
+            Alert type
+          </span>
           <select
             name="alertType"
             required
             defaultValue="below"
-            className="w-full rounded-tremor-default border border-dark-tremor-border bg-slate-950 px-3 py-2 text-tremor-default text-dark-tremor-content-strong"
+            className="w-full rounded-xl border border-white/10 bg-slate-950/80 px-3 py-2.5 text-sm text-white"
           >
             <option value="below">Price below (€)</option>
             <option value="above">Price above (€)</option>
@@ -93,7 +109,9 @@ export function AddAlertForm({ products }: AddAlertFormProps) {
         </label>
 
         <label className="space-y-2">
-          <span className="text-tremor-label text-dark-tremor-content">Threshold</span>
+          <span className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
+            Threshold
+          </span>
           <input
             name="threshold"
             type="number"
@@ -101,24 +119,22 @@ export function AddAlertForm({ products }: AddAlertFormProps) {
             min="0"
             required
             placeholder="99.99"
-            className="w-full rounded-tremor-default border border-dark-tremor-border bg-slate-950 px-3 py-2 text-tremor-default text-dark-tremor-content-strong"
+            className="w-full rounded-xl border border-white/10 bg-slate-950/80 px-3 py-2.5 text-sm text-white"
           />
         </label>
-      </div>
 
-      <div className="mt-4 flex items-center gap-3">
-        <button
-          type="submit"
-          disabled={loading || products.length === 0}
-          className={classNames(
-            "rounded-tremor-default bg-blue-500 px-4 py-2 text-tremor-default font-medium text-white hover:bg-blue-600",
-            (loading || products.length === 0) && "opacity-60",
-          )}
-        >
-          {loading ? "Saving..." : "Create alert"}
-        </button>
-        {error ? <p className="text-tremor-default text-rose-400">{error}</p> : null}
-      </div>
-    </form>
+        <div className="md:col-span-3 flex flex-wrap items-center gap-3">
+          <Button
+            type="submit"
+            disabled={loading || products.length === 0}
+            className="rounded-xl font-bold"
+          >
+            {loading ? "Saving..." : "Create alert"}
+          </Button>
+          {error ? <p className="text-sm text-rose-400">{error}</p> : null}
+          {success ? <p className="text-sm text-emerald-400">{success}</p> : null}
+        </div>
+      </form>
+    </GlassPanel>
   );
 }
