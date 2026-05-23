@@ -9,6 +9,17 @@ type VolatilityMetricsProps = {
 };
 
 export function VolatilityMetrics({ data }: VolatilityMetricsProps) {
+  if (data.length === 0) {
+    return (
+      <Card className="border-border/60 bg-card/70 backdrop-blur">
+        <Title className="text-foreground">Price Volatility (30d)</Title>
+        <p className="mt-6 text-sm text-muted-foreground">
+          Volatility appears after multiple price snapshots per competitor.
+        </p>
+      </Card>
+    );
+  }
+
   const chartData = data.map((item) => ({
     competitor: item.competitor,
     "Volatility %": Number(item.volatilityPercent.toFixed(2)),
