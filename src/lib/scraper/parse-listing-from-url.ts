@@ -24,10 +24,11 @@ const SITE_RULES: Array<{ match: RegExp; rule: SiteRule }> = [
     match: /amazon\./i,
     rule: {
       competitor: "Amazon",
-      priceSelector: ".a-price .a-offscreen, #priceblock_ourprice, #priceblock_dealprice",
+      priceSelector:
+        ".priceToPay .a-offscreen, .a-price .a-offscreen, #corePrice_feature_div .a-offscreen, #priceblock_ourprice",
       defaultCurrency: "EUR",
       nameSelectors: ["#productTitle", "meta[property='og:title']", "title"],
-      skuFromUrl: /\/(?:dp|gp\/product)\/([A-Z0-9]{10})/i,
+      skuFromUrl: /\/(?:dp|gp\/product|exec\/obidos\/ASIN)\/([A-Z0-9]{10})(?:[/?]|$)/i,
     },
   },
   {
@@ -157,6 +158,31 @@ function extractSku(url: string, rule: SiteRule) {
   return null;
 }
 
+function extractSkuFromHtml(
+  $: cheerio.CheerioAPI,
+  url: string,
+  rule: SiteRule,
+): string | null {
+  const fromUrl = extractSku(url, rule);
+  if (fromUrl) return fromUrl;
+
+  const asin =
+    $("input#ASIN").attr("value")?.trim() ??
+    $("[data-asin]").first().attr("data-asin")?.trim();
+
+  if (asin && /^[A-Z0-9]{10}$/i.test(asin)) {
+    return asin.toUpperCase();
+  }
+
+  const parsedUrl = new URL(url);
+  const asinParam = parsedUrl.searchParams.get("asin");
+  if (asinParam && /^[A-Z0-9]{10}$/i.test(asinParam)) {
+    return asinParam.toUpperCase();
+  }
+
+  return null;
+}
+
 export async function parseListingFromUrl(rawUrl: string): Promise<ParsedListing> {
   let parsedUrl: URL;
 
@@ -181,7 +207,7 @@ export async function parseListingFromUrl(rawUrl: string): Promise<ParsedListing
   }
 
   const currency = inferCurrency(hostname, $, rule.defaultCurrency);
-  const sku = extractSku(parsedUrl.toString(), rule);
+  const sku = extractSkuFromHtml($, parsedUrl.toString(), rule);
 
   return {
     name,
