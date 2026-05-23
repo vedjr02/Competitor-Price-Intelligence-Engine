@@ -1,6 +1,5 @@
 import { ArbitrageSpreads } from "@/components/dashboard/arbitrage-spreads";
 import { DashboardHeader } from "@/components/dashboard/dashboard-header";
-import { DemoDataBanner } from "@/components/dashboard/demo-data-banner";
 import { MarketPulseTable } from "@/components/dashboard/market-pulse-table";
 import { VolatilityMetrics } from "@/components/dashboard/volatility-metrics";
 import { CostComparisonChart } from "@/components/tremor-blocks/cost-comparison-chart";
@@ -17,8 +16,6 @@ export default async function DashboardPage() {
         snapshotCount={data.snapshotCount}
         isLiveData={data.isLiveData}
       />
-
-      {data.isDemoData ? <DemoDataBanner /> : null}
 
       <IntelligenceProgressCards metrics={data.progressMetrics} />
 
