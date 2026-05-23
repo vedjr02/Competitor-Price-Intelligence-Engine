@@ -47,6 +47,7 @@ export async function evaluatePriceAlerts(
     triggered.push({
       id: alert.id,
       product_id: alert.product_id,
+      user_id: alert.user_id ?? null,
       alert_type: alert.alert_type,
       threshold: Number(alert.threshold),
       is_active: alert.is_active,

@@ -1,4 +1,5 @@
 import { evaluatePriceAlerts } from "@/lib/alerts/evaluate-alerts";
+import { sendTriggeredAlertEmails } from "@/lib/email/send-price-alert";
 import { scrapePriceFromUrl } from "@/lib/scraper/scrape-price";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
@@ -81,6 +82,10 @@ export async function captureProductPrice(
     price,
     previousRecord ? Number(previousRecord.price) : null,
   );
+
+  if (triggeredAlerts.length > 0) {
+    await sendTriggeredAlertEmails(productId, triggeredAlerts);
+  }
 
   return {
     price,

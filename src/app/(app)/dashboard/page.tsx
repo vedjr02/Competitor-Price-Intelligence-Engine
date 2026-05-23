@@ -4,6 +4,7 @@ import {
   DashboardInsightsPanel,
   DashboardTrendSection,
 } from "@/components/dashboard/dashboard-header";
+import { AlertPreferencesPanel } from "@/components/dashboard/alert-preferences-panel";
 import { getDashboardData } from "@/lib/dashboard/get-dashboard-data";
 import { requireSelectedProduct } from "@/lib/products/selection";
 
@@ -17,7 +18,13 @@ export default async function DashboardPage() {
       <DashboardHeroStats data={data} />
 
       <div className="grid gap-6 xl:grid-cols-[1fr_20rem]">
-        <DashboardTrendSection data={data} />
+        <div className="space-y-6">
+          <DashboardTrendSection data={data} />
+          <AlertPreferencesPanel
+            productId={data.product?.id ?? null}
+            productName={data.product?.name ?? null}
+          />
+        </div>
         <DashboardInsightsPanel data={data} />
       </div>
     </div>
