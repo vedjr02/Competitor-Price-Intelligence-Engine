@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { parseListingFromUrl } from "@/lib/scraper/parse-listing-from-url";
+import { SELECTED_PRODUCT_COOKIE } from "@/lib/products/selection";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type { Product } from "@/types/database";
 
@@ -36,7 +37,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ product: data }, { status: 201 });
+    const response = NextResponse.json({ product: data }, { status: 201 });
+    response.cookies.set(SELECTED_PRODUCT_COOKIE, data.id, {
+      httpOnly: false,
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 365,
+    });
+
+    return response;
   } catch (error) {
     const message = error instanceof Error ? error.message : "Create failed";
     return NextResponse.json({ error: message }, { status: 500 });
