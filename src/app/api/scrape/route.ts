@@ -1,9 +1,7 @@
 import { NextResponse } from "next/server";
 
-import { evaluatePriceAlerts } from "@/lib/alerts/evaluate-alerts";
+import { captureProductPrice } from "@/lib/scraper/capture-product-price";
 import { logScrapeRun } from "@/lib/scraper/log-scrape-run";
-import { scrapePriceFromUrl } from "@/lib/scraper/scrape-price";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 type ScrapeRequestBody = {
   productId: string;
@@ -21,76 +19,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "productId is required" }, { status: 400 });
     }
 
-    const supabase = createServerSupabaseClient();
-
-    const { data: product, error: productError } = await supabase
-      .from("products")
-      .select("id, url, price_selector, sku")
-      .eq("id", productId)
-      .single();
-
-    if (productError || !product) {
-      return NextResponse.json({ error: "Product not found" }, { status: 404 });
-    }
-
-    const resolvedSelector = selector ?? product.price_selector;
-    if (!resolvedSelector) {
-      return NextResponse.json(
-        { error: "No CSS selector configured for this product" },
-        { status: 400 },
-      );
-    }
-
-    const { data: previousRecord } = await supabase
-      .from("price_history")
-      .select("price")
-      .eq("product_id", productId)
-      .order("scraped_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    const { price, rawText } = await scrapePriceFromUrl({
-      url: product.url,
-      selector: resolvedSelector,
-    });
-
-    const { data: priceRecord, error: insertError } = await supabase
-      .from("price_history")
-      .insert({
-        product_id: productId,
-        price,
-        raw_selector: resolvedSelector,
-        scraped_at: new Date().toISOString(),
-      })
-      .select("id, price, scraped_at")
-      .single();
-
-    if (insertError) {
-      return NextResponse.json({ error: insertError.message }, { status: 500 });
-    }
-
-    await supabase
-      .from("products")
-      .update({ updated_at: new Date().toISOString() })
-      .eq("id", productId);
-
-    if (!product.sku) {
-      const asinMatch = product.url.match(
-        /\/(?:dp|gp\/product|exec\/obidos\/ASIN)\/([A-Z0-9]{10})/i,
-      );
-      if (asinMatch?.[1]) {
-        await supabase
-          .from("products")
-          .update({ sku: asinMatch[1].toUpperCase() })
-          .eq("id", productId);
-      }
-    }
-
-    const triggeredAlerts = await evaluatePriceAlerts(
-      productId,
-      price,
-      previousRecord ? Number(previousRecord.price) : null,
-    );
+    const { price, rawText, record, triggeredAlerts } =
+      await captureProductPrice(productId, selector);
 
     await logScrapeRun({
       runType: "single",
@@ -104,7 +34,7 @@ export async function POST(request: Request) {
       success: true,
       price,
       rawText,
-      record: priceRecord,
+      record,
       triggeredAlerts,
     });
   } catch (error) {

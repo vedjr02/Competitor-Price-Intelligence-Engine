@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 
-import { parseListingFromUrl } from "@/lib/scraper/parse-listing-from-url";
 import { SELECTED_PRODUCT_COOKIE } from "@/lib/products/selection";
+import { captureProductPrice } from "@/lib/scraper/capture-product-price";
+import { logScrapeRun } from "@/lib/scraper/log-scrape-run";
+import { parseListingFromUrl } from "@/lib/scraper/parse-listing-from-url";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type { Product } from "@/types/database";
 
@@ -37,7 +39,37 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    const response = NextResponse.json({ product: data }, { status: 201 });
+    let initialPrice: number | null = null;
+    let scrapeError: string | null = null;
+
+    try {
+      const capture = await captureProductPrice(data.id);
+      initialPrice = capture.price;
+      await logScrapeRun({
+        runType: "single",
+        productsScraped: 1,
+        productsFailed: 0,
+        startedAt: new Date().toISOString(),
+        details: { productId: data.id, price: capture.price, onCreate: true },
+      });
+    } catch (captureError) {
+      scrapeError =
+        captureError instanceof Error
+          ? captureError.message
+          : "Initial price capture failed";
+      await logScrapeRun({
+        runType: "single",
+        productsScraped: 0,
+        productsFailed: 1,
+        startedAt: new Date().toISOString(),
+        details: { productId: data.id, onCreate: true, error: scrapeError },
+      });
+    }
+
+    const response = NextResponse.json(
+      { product: data, initialPrice, scrapeError },
+      { status: 201 },
+    );
     response.cookies.set(SELECTED_PRODUCT_COOKIE, data.id, {
       httpOnly: false,
       sameSite: "lax",
