@@ -14,7 +14,8 @@ function buildBrowserHeaders(url: string): HeadersInit {
     "Cache-Control": "no-cache",
     Pragma: "no-cache",
     Referer: `${origin}/`,
-    "Sec-Ch-Ua": '"Chromium";v="122", "Google Chrome";v="122", "Not_A Brand";v="99"',
+    "Sec-Ch-Ua":
+      '"Chromium";v="122", "Google Chrome";v="122", "Not_A Brand";v="99"',
     "Sec-Ch-Ua-Mobile": "?0",
     "Sec-Ch-Ua-Platform": '"macOS"',
     "Sec-Fetch-Dest": "document",
@@ -52,36 +53,94 @@ async function fetchViaJinaReader(url: string): Promise<string> {
   });
 
   if (!response.ok) {
-    throw new Error(
-      `Could not bypass store protection (${response.status}). Try again in a moment.`,
-    );
+    throw new Error(`Jina reader failed (${response.status})`);
   }
 
   const html = await response.text();
-
   if (html.length < 500) {
-    throw new Error("Store returned an empty page. Try again shortly.");
+    throw new Error("Jina reader returned an empty page");
   }
 
   return html;
 }
 
+async function fetchViaScraperApi(url: string): Promise<string> {
+  const apiKey = process.env.SCRAPERAPI_KEY?.trim();
+  if (!apiKey) {
+    throw new Error("ScraperAPI key not configured");
+  }
+
+  const renderJs = process.env.SCRAPERAPI_RENDER === "true" ? "&render=true" : "";
+  const endpoint = `https://api.scraperapi.com/?api_key=${apiKey}&url=${encodeURIComponent(url)}${renderJs}`;
+
+  const response = await fetch(endpoint, { next: { revalidate: 0 } });
+
+  if (!response.ok) {
+    throw new Error(`ScraperAPI failed (${response.status})`);
+  }
+
+  const html = await response.text();
+  if (html.length < 500) {
+    throw new Error("ScraperAPI returned an empty page");
+  }
+
+  return html;
+}
+
+/**
+ * Fetches listing HTML using a provider chain:
+ * 1. Direct browser-like request (fast, free)
+ * 2. Jina Reader (Cloudflare bypass for many stores)
+ * 3. ScraperAPI (paid, most reliable — set SCRAPERAPI_KEY)
+ */
 export async function fetchListingHtml(url: string): Promise<string> {
-  let response: Response;
+  let blocked = false;
 
   try {
-    response = await fetchDirect(url);
-  } catch {
-    return fetchViaJinaReader(url);
+    const response = await fetchDirect(url);
+
+    if (response.ok) {
+      return response.text();
+    }
+
+    if (BLOCKED_STATUS_CODES.has(response.status)) {
+      blocked = true;
+    } else {
+      throw new Error(`Could not fetch listing page (${response.status})`);
+    }
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      error.message.startsWith("Could not fetch listing page")
+    ) {
+      throw error;
+    }
+    blocked = true;
   }
 
-  if (response.ok) {
-    return response.text();
+  const errors: string[] = [];
+
+  if (blocked) {
+    try {
+      return await fetchViaJinaReader(url);
+    } catch (error) {
+      errors.push(
+        error instanceof Error ? error.message : "Jina reader unavailable",
+      );
+    }
+
+    try {
+      return await fetchViaScraperApi(url);
+    } catch (error) {
+      errors.push(
+        error instanceof Error ? error.message : "ScraperAPI unavailable",
+      );
+    }
   }
 
-  if (BLOCKED_STATUS_CODES.has(response.status)) {
-    return fetchViaJinaReader(url);
-  }
-
-  throw new Error(`Could not fetch listing page (${response.status})`);
+  throw new Error(
+    errors.length > 0
+      ? `All fetch providers failed: ${errors.join("; ")}`
+      : "Could not fetch listing page",
+  );
 }
