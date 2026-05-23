@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { BarChart3, Package } from "lucide-react";
 
-import { cn } from "@/lib/utils";
+import { classNames } from "@/lib/tremor/class-names";
 
 const navItems = [
   { href: "/dashboard", label: "Overview", icon: BarChart3 },
@@ -15,7 +15,7 @@ export function MobileNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="flex gap-2 border-b border-border/60 bg-card/40 px-4 py-3 backdrop-blur xl:hidden">
+    <nav className="flex gap-2 border-b border-dark-tremor-border bg-slate-950 px-4 py-3 xl:hidden">
       {navItems.map(({ href, label, icon: Icon }) => {
         const active = pathname === href || pathname.startsWith(`${href}/`);
 
@@ -23,11 +23,11 @@ export function MobileNav() {
           <Link
             key={href}
             href={href}
-            className={cn(
-              "flex flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm",
+            className={classNames(
+              "flex flex-1 items-center justify-center gap-2 rounded-tremor-default px-3 py-2 text-tremor-default font-medium",
               active
-                ? "bg-primary/15 text-primary"
-                : "text-muted-foreground hover:bg-accent",
+                ? "bg-dark-tremor-background-subtle text-dark-tremor-brand"
+                : "text-dark-tremor-content hover:bg-dark-tremor-background-subtle",
             )}
           >
             <Icon className="size-4" />
