@@ -2,13 +2,16 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, Package } from "lucide-react";
+import { BarChart3, Bell, History, Layers, Package } from "lucide-react";
 
 import { classNames } from "@/lib/tremor/class-names";
 
 const navItems = [
   { href: "/dashboard", label: "Overview", icon: BarChart3 },
   { href: "/products", label: "Products", icon: Package },
+  { href: "/insights", label: "SKU", icon: Layers },
+  { href: "/alerts", label: "Alerts", icon: Bell },
+  { href: "/history", label: "History", icon: History },
 ];
 
 export function MobileNav() {
