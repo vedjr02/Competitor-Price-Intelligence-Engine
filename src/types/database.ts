@@ -5,6 +5,7 @@ export type Product = {
   competitor: string;
   url: string;
   currency: string;
+  price_selector: string;
   created_at: string;
   updated_at: string;
 };
