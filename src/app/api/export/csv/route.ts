@@ -37,18 +37,26 @@ export async function GET() {
       "selector",
     ];
 
-    const rows = (data ?? []).map((row) =>
-      [
-        escapeCsv(row.products.name),
-        escapeCsv(row.products.sku),
-        escapeCsv(row.products.competitor),
-        escapeCsv(row.products.url),
-        escapeCsv(row.products.currency),
+    const rows = (data ?? []).map((row) => {
+      const product = row.products as {
+        name: string;
+        sku: string | null;
+        competitor: string;
+        url: string;
+        currency: string;
+      };
+
+      return [
+        escapeCsv(product.name),
+        escapeCsv(product.sku),
+        escapeCsv(product.competitor),
+        escapeCsv(product.url),
+        escapeCsv(product.currency),
         escapeCsv(row.price),
         escapeCsv(row.scraped_at),
         escapeCsv(row.raw_selector),
-      ].join(","),
-    );
+      ].join(",");
+    });
 
     const csv = [headers.join(","), ...rows].join("\n");
     const filename = `price-intelligence-export-${new Date().toISOString().slice(0, 10)}.csv`;
