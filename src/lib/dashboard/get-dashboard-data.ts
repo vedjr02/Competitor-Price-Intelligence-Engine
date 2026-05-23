@@ -1,4 +1,9 @@
 import {
+  buildCostComparisonData,
+  type CostComparisonPoint,
+  type CostComparisonSummary,
+} from "@/lib/analytics/cost-comparison";
+import {
   calculateArbitrageSpreads,
   type ArbitrageSpread,
 } from "@/lib/analytics/arbitrage";
@@ -7,7 +12,7 @@ import {
   calculateVolatility,
   calculateVolatilityPercent,
 } from "@/lib/analytics/volatility";
-import type { KpiStat } from "@/components/dashboard/kpi-grid";
+import type { ProgressMetric } from "@/components/tremor-blocks/intelligence-progress-cards";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type { PriceHistory, Product } from "@/types/database";
 
@@ -40,7 +45,9 @@ export type DashboardData = {
   volatilities: ProductVolatility[];
   arbitrageSpreads: ArbitrageSpread[];
   trackedProducts: TrackedProductRow[];
-  kpis: KpiStat[];
+  costComparison: CostComparisonPoint[];
+  costComparisonSummary: CostComparisonSummary[];
+  progressMetrics: ProgressMetric[];
   productCount: number;
   snapshotCount: number;
   isLiveData: boolean;
@@ -59,93 +66,60 @@ function buildEmptyDashboard(): DashboardData {
     volatilities: [],
     arbitrageSpreads: [],
     trackedProducts: [],
-    kpis: [
-      {
-        label: "Tracked Products",
-        value: "0",
-        helper: "Add competitor listings to begin",
-      },
-      {
-        label: "Avg Market Price",
-        value: "—",
-        helper: "No price snapshots yet",
-      },
-      {
-        label: "Top Arbitrage Spread",
-        value: "—",
-        helper: "Needs 2+ competitors per SKU",
-      },
-      {
-        label: "Avg Volatility",
-        value: "—",
-        helper: "30-day rolling window",
-      },
-    ],
+    costComparison: [],
+    costComparisonSummary: [],
+    progressMetrics: buildProgressMetrics({
+      productCount: 0,
+      snapshotCount: 0,
+      scrapedProducts: 0,
+      avgVolatility: 0,
+      arbitrageCount: 0,
+    }),
     productCount: 0,
     snapshotCount: 0,
     isLiveData: hasSupabaseConfig(),
   };
 }
 
-function buildKpis(input: {
+function buildProgressMetrics(input: {
   productCount: number;
   snapshotCount: number;
-  avgPrice: number;
-  topSpread: ArbitrageSpread | null;
+  scrapedProducts: number;
   avgVolatility: number;
-  priceMovers: number;
-}): KpiStat[] {
-  const currency = new Intl.NumberFormat("en-IE", {
-    style: "currency",
-    currency: "EUR",
-  });
+  arbitrageCount: number;
+}): ProgressMetric[] {
+  const productTarget = 12;
+  const snapshotTarget = 120;
+  const scrapeCoverage =
+    input.productCount === 0
+      ? 0
+      : (input.scrapedProducts / input.productCount) * 100;
+  const volatilityCap = 15;
 
   return [
     {
-      label: "Tracked Products",
-      value: String(input.productCount),
-      helper: `${input.snapshotCount} price snapshots captured`,
+      name: "Tracked Listings",
+      stat: String(input.productCount),
+      limit: String(productTarget),
+      percentage: Math.min((input.productCount / productTarget) * 100, 100),
     },
     {
-      label: "Avg Market Price",
-      value: input.avgPrice > 0 ? currency.format(input.avgPrice) : "—",
-      helper: "Across latest competitor listings",
-      trend: input.priceMovers > 0 ? "up" : "flat",
-      trendLabel:
-        input.priceMovers > 0 ? `${input.priceMovers} movers` : undefined,
+      name: "Price Snapshots",
+      stat: String(input.snapshotCount),
+      limit: String(snapshotTarget),
+      percentage: Math.min((input.snapshotCount / snapshotTarget) * 100, 100),
     },
     {
-      label: "Top Arbitrage Spread",
-      value: input.topSpread
-        ? `${input.topSpread.spreadPercent.toFixed(1)}%`
-        : "—",
-      helper: input.topSpread
-        ? `${input.topSpread.lowCompetitor} → ${input.topSpread.highCompetitor}`
-        : "Compare same SKU across rivals",
-      trend: input.topSpread ? "up" : "flat",
-      trendLabel: input.topSpread
-        ? currency.format(input.topSpread.spread)
-        : undefined,
+      name: "Scrape Coverage",
+      stat: `${input.scrapedProducts}`,
+      limit: `${input.productCount || 0}`,
+      percentage: scrapeCoverage,
     },
     {
-      label: "Avg Volatility",
-      value:
-        input.avgVolatility > 0
-          ? `${input.avgVolatility.toFixed(2)}%`
-          : "—",
-      helper: "30-day coefficient of variation",
-      trend:
-        input.avgVolatility > 5
-          ? "up"
-          : input.avgVolatility > 0
-            ? "down"
-            : "flat",
-      trendLabel:
-        input.avgVolatility > 5
-          ? "Elevated"
-          : input.avgVolatility > 0
-            ? "Stable"
-            : undefined,
+      name: "Volatility Index",
+      stat: `${input.avgVolatility.toFixed(1)}%`,
+      limit: `${volatilityCap}%`,
+      percentage: Math.min((input.avgVolatility / volatilityCap) * 100, 100),
     },
   ];
 }
@@ -278,18 +252,25 @@ export async function getDashboardData(): Promise<DashboardData> {
       Math.abs(product.priceChangePercent) >= 1,
   ).length;
 
+  const scrapedProducts = trackedProducts.filter(
+    (product) => product.latestPrice != null,
+  ).length;
+
+  const { chartData, summary } = buildCostComparisonData(trends);
+
   return {
     trends,
     volatilities,
     arbitrageSpreads,
     trackedProducts,
-    kpis: buildKpis({
+    costComparison: chartData,
+    costComparisonSummary: summary,
+    progressMetrics: buildProgressMetrics({
       productCount: products.length,
       snapshotCount: historyEntries.length,
-      avgPrice,
-      topSpread: arbitrageSpreads[0] ?? null,
+      scrapedProducts,
       avgVolatility,
-      priceMovers,
+      arbitrageCount: arbitrageSpreads.length,
     }),
     productCount: products.length,
     snapshotCount: historyEntries.length,
