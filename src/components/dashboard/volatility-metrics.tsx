@@ -1,6 +1,6 @@
 "use client";
 
-import { BarChart, Card, Title } from "@tremor/react";
+import { BarChart } from "@tremor/react";
 
 import type { ProductVolatility } from "@/lib/dashboard/get-dashboard-data";
 
@@ -11,12 +11,14 @@ type VolatilityMetricsProps = {
 export function VolatilityMetrics({ data }: VolatilityMetricsProps) {
   if (data.length === 0) {
     return (
-      <Card className="border-border/60 bg-card/70 backdrop-blur">
-        <Title className="text-foreground">Price Volatility (30d)</Title>
-        <p className="mt-6 text-sm text-muted-foreground">
+      <div className="rounded-tremor-default border border-dark-tremor-border bg-dark-tremor-background p-6 shadow-dark-tremor-card">
+        <h3 className="font-medium text-dark-tremor-content-strong">
+          Price volatility (30d)
+        </h3>
+        <p className="mt-2 text-tremor-default text-dark-tremor-content">
           Volatility appears after multiple price snapshots per competitor.
         </p>
-      </Card>
+      </div>
     );
   }
 
@@ -26,18 +28,23 @@ export function VolatilityMetrics({ data }: VolatilityMetricsProps) {
   }));
 
   return (
-    <Card className="border-border/60 bg-card/70 backdrop-blur">
-      <Title className="text-foreground">Price Volatility (30d)</Title>
+    <div className="rounded-tremor-default border border-dark-tremor-border bg-dark-tremor-background p-6 shadow-dark-tremor-card">
+      <h3 className="font-medium text-dark-tremor-content-strong">
+        Price volatility (30d)
+      </h3>
+      <p className="text-tremor-default text-dark-tremor-content">
+        Rolling coefficient of variation by competitor listing.
+      </p>
       <BarChart
         className="mt-6 h-72"
         data={chartData}
         index="competitor"
         categories={["Volatility %"]}
-        colors={["cyan"]}
+        colors={["blue"]}
         valueFormatter={(value) => `${value.toFixed(2)}%`}
         yAxisWidth={48}
         showAnimation
       />
-    </Card>
+    </div>
   );
 }
