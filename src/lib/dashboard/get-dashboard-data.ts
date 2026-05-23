@@ -229,14 +229,6 @@ export async function getDashboardData(): Promise<DashboardData> {
   }>;
 
   const arbitrageSpreads = calculateArbitrageSpreads(arbitrageInput);
-  const latestPrices = trackedProducts
-    .map((product) => product.latestPrice)
-    .filter((price): price is number => price != null);
-
-  const avgPrice =
-    latestPrices.length > 0
-      ? latestPrices.reduce((sum, price) => sum + price, 0) / latestPrices.length
-      : 0;
 
   const avgVolatility =
     volatilities.length > 0
@@ -245,12 +237,6 @@ export async function getDashboardData(): Promise<DashboardData> {
           0,
         ) / volatilities.length
       : 0;
-
-  const priceMovers = trackedProducts.filter(
-    (product) =>
-      product.priceChangePercent != null &&
-      Math.abs(product.priceChangePercent) >= 1,
-  ).length;
 
   const scrapedProducts = trackedProducts.filter(
     (product) => product.latestPrice != null,
