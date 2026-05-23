@@ -115,7 +115,7 @@ export function extractPriceText(
 
   return trySelectors(
     $,
-    '[itemprop="price"], .price, .product-price, .sale-price, [data-testid="price"]',
+    '[data-testid="product-price"], [itemprop="price"], .price, .product-price, .sale-price, [data-testid="price"]',
   );
 }
 

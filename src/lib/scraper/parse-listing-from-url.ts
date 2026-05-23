@@ -87,6 +87,22 @@ const SITE_RULES: Array<{ match: RegExp; rule: SiteRule }> = [
       nameSelectors: ["h1", "meta[property='og:title']", "title"],
     },
   },
+  {
+    match: /notino\./i,
+    rule: {
+      competitor: "Notino",
+      priceSelector:
+        '[data-testid="product-price"], [itemprop="price"], meta[property="product:price:amount"]',
+      defaultCurrency: "EUR",
+      nameSelectors: [
+        "meta[property='og:title']",
+        "h1",
+        "meta[name='description']",
+        "title",
+      ],
+      skuFromUrl: /\/p-(\d+)\/?(?:$|[?#])/i,
+    },
+  },
 ];
 
 const TLD_CURRENCY: Record<string, string> = {
@@ -146,6 +162,7 @@ function cleanTitle(value: string) {
     .replace(/\s+/g, " ")
     .replace(/\s*[|\-–—]\s*Amazon.*$/i, "")
     .replace(/\s*[|\-–—]\s*eBay.*$/i, "")
+    .replace(/\s*[|\-–—]\s*notino\.[a-z.]+$/i, "")
     .trim();
 }
 
@@ -158,6 +175,31 @@ function extractSku(url: string, rule: SiteRule) {
   return null;
 }
 
+function extractSkuFromJsonLd($: cheerio.CheerioAPI): string | null {
+  for (const element of $("script[type='application/ld+json']").toArray()) {
+    try {
+      const raw = $(element).html();
+      if (!raw) continue;
+
+      const parsed = JSON.parse(raw) as unknown;
+      const items = Array.isArray(parsed) ? parsed : [parsed];
+
+      for (const item of items) {
+        if (!item || typeof item !== "object") continue;
+
+        const record = item as Record<string, unknown>;
+        if (record["@type"] === "Product" || record.sku) {
+          if (record.sku) return String(record.sku);
+        }
+      }
+    } catch {
+      continue;
+    }
+  }
+
+  return null;
+}
+
 function extractSkuFromHtml(
   $: cheerio.CheerioAPI,
   url: string,
@@ -165,6 +207,9 @@ function extractSkuFromHtml(
 ): string | null {
   const fromUrl = extractSku(url, rule);
   if (fromUrl) return fromUrl;
+
+  const fromJsonLd = extractSkuFromJsonLd($);
+  if (fromJsonLd) return fromJsonLd;
 
   const asin =
     $("input#ASIN").attr("value")?.trim() ??
