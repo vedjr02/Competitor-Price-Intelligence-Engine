@@ -41,7 +41,7 @@ export function ProductSwitcher({
   if (products.length === 0) {
     return (
       <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
-        <p className="text-xs uppercase tracking-[0.18em] text-slate-500">
+        <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">
           Active product
         </p>
         <p className="mt-1 text-sm text-slate-400">Add a listing to begin</p>
@@ -56,12 +56,12 @@ export function ProductSwitcher({
         onClick={() => setOpen((value) => !value)}
         disabled={pending}
         className={classNames(
-          "flex w-full items-center gap-3 rounded-xl border border-white/10 bg-gradient-to-br from-white/[0.06] to-white/[0.02] text-left transition hover:border-blue-400/30 hover:from-blue-500/10",
+          "flex w-full items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] text-left transition hover:border-emerald-500/30 hover:bg-emerald-500/[0.06]",
           compact ? "px-3 py-2.5" : "px-4 py-3.5",
           pending && "opacity-70",
         )}
       >
-        <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-blue-500/15 text-blue-300">
+        <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-400">
           <Package2 className="size-4" />
         </div>
         <div className="min-w-0 flex-1">
@@ -72,7 +72,7 @@ export function ProductSwitcher({
             {selectedProduct?.name ?? "Select product"}
           </p>
           {!compact && selectedProduct ? (
-            <p className="truncate text-xs text-slate-400">
+            <p className="truncate text-xs text-slate-500">
               {selectedProduct.competitor}
               {selectedProduct.sku ? ` · ${selectedProduct.sku}` : ""}
             </p>
@@ -80,7 +80,7 @@ export function ProductSwitcher({
         </div>
         <ChevronDown
           className={classNames(
-            "size-4 shrink-0 text-slate-400 transition",
+            "size-4 shrink-0 text-slate-500 transition",
             open && "rotate-180",
           )}
         />
@@ -94,7 +94,7 @@ export function ProductSwitcher({
             className="fixed inset-0 z-40"
             onClick={() => setOpen(false)}
           />
-          <div className="absolute left-0 right-0 top-[calc(100%+0.5rem)] z-50 max-h-72 overflow-auto rounded-xl border border-white/10 bg-slate-950/95 p-2 shadow-2xl backdrop-blur-xl">
+          <div className="absolute left-0 right-0 top-[calc(100%+0.5rem)] z-50 max-h-72 overflow-auto rounded-xl border border-white/10 bg-[#0a0f0d] p-2 shadow-2xl">
             {products.map((product) => {
               const active = product.id === selectedProduct?.id;
 
@@ -106,8 +106,8 @@ export function ProductSwitcher({
                   className={classNames(
                     "flex w-full flex-col rounded-lg px-3 py-2.5 text-left transition",
                     active
-                      ? "bg-blue-500/15 text-white"
-                      : "text-slate-300 hover:bg-white/5 hover:text-white",
+                      ? "bg-emerald-500/15 text-emerald-100"
+                      : "text-slate-400 hover:bg-white/[0.04] hover:text-white",
                   )}
                 >
                   <span className="truncate text-sm font-bold">{product.name}</span>

@@ -10,8 +10,8 @@ export function MobileNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="flex gap-2 border-b border-white/10 bg-slate-950/80 px-3 py-2 backdrop-blur-xl xl:hidden">
-      {appNavItems.map(({ href, label, icon: Icon }) => {
+    <nav className="flex gap-1 overflow-x-auto border-b border-white/[0.06] bg-[#0a0f0d]/90 px-2 py-2 backdrop-blur-xl xl:hidden">
+      {appNavItems.slice(0, 4).map(({ href, label, icon: Icon }) => {
         const active = pathname === href || pathname.startsWith(`${href}/`);
 
         return (
@@ -19,10 +19,10 @@ export function MobileNav() {
             key={href}
             href={href}
             className={classNames(
-              "flex flex-1 flex-col items-center justify-center gap-1 rounded-xl px-2 py-2 text-[11px] font-bold",
+              "flex shrink-0 flex-col items-center justify-center gap-1 rounded-xl px-3 py-2 text-[10px] font-bold",
               active
-                ? "bg-blue-500/15 text-blue-200"
-                : "text-slate-500 hover:bg-white/5 hover:text-slate-300",
+                ? "bg-emerald-500/15 text-emerald-300"
+                : "text-slate-500 hover:bg-white/[0.04] hover:text-slate-300",
             )}
           >
             <Icon className="size-4" />

@@ -1,7 +1,10 @@
+"use client";
+
 import Link from "next/link";
 import { Package, Sparkles } from "lucide-react";
 
 import { AppNavLinks } from "@/components/layout/app-nav-links";
+import { AppTopBar } from "@/components/layout/app-top-bar";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { ProductSwitcher } from "@/components/layout/product-switcher";
 import type { ProductCatalog } from "@/lib/products/selection";
@@ -16,25 +19,27 @@ export function AppShell({ catalog, children }: AppShellProps) {
     <div className="relative flex min-h-full flex-1 flex-col xl:flex-row">
       <div
         aria-hidden
-        className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.16),transparent_34%),radial-gradient(circle_at_85%_10%,rgba(14,165,233,0.12),transparent_28%),linear-gradient(180deg,#020617_0%,#0b1120_48%,#020617_100%)]"
+        className="pointer-events-none fixed inset-0 bg-[#060908] bg-[radial-gradient(ellipse_at_top_left,rgba(16,185,129,0.12),transparent_42%),radial-gradient(ellipse_at_80%_0%,rgba(52,211,153,0.06),transparent_35%)]"
       />
 
-      <aside className="relative hidden w-72 shrink-0 border-r border-white/10 bg-slate-950/70 backdrop-blur-xl xl:flex xl:flex-col">
-        <div className="border-b border-white/10 px-5 py-6">
+      <aside className="relative hidden w-[17.5rem] shrink-0 border-r border-white/[0.06] bg-[#0a0f0d]/90 backdrop-blur-xl xl:flex xl:flex-col">
+        <div className="border-b border-white/[0.06] px-5 py-6">
           <div className="flex items-center gap-3">
-            <div className="flex size-11 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-400 text-white shadow-lg shadow-blue-500/20">
+            <div className="flex size-11 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-600 text-[#0a0f0d] shadow-lg shadow-emerald-500/25">
               <Sparkles className="size-5" />
             </div>
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-500">
-                Intelligence
+              <p className="text-lg font-bold tracking-tight text-white">
+                PriceSense
               </p>
-              <p className="text-lg font-bold text-white">Price Engine</p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-emerald-500/80">
+                Precision Analytics
+              </p>
             </div>
           </div>
         </div>
 
-        <div className="border-b border-white/10 p-4">
+        <div className="border-b border-white/[0.06] p-4">
           <ProductSwitcher
             products={catalog.products}
             selectedProduct={catalog.selectedProduct}
@@ -43,10 +48,19 @@ export function AppShell({ catalog, children }: AppShellProps) {
 
         <AppNavLinks />
 
-        <div className="mt-auto border-t border-white/10 p-4">
+        <div className="mt-auto space-y-3 border-t border-white/[0.06] p-4">
+          <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.07] p-4">
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-400">
+              Sync integrity
+            </p>
+            <p className="mt-1 text-sm font-bold text-white">Automated tracking</p>
+            <p className="mt-1 text-xs leading-5 text-slate-400">
+              Cron captures every 6h once deployed on Vercel.
+            </p>
+          </div>
           <Link
             href="/products"
-            className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-white/15 px-4 py-3 text-sm font-bold text-slate-300 transition hover:border-blue-400/40 hover:bg-blue-500/10 hover:text-white"
+            className="flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-bold text-slate-300 transition hover:border-emerald-500/30 hover:bg-emerald-500/10 hover:text-white"
           >
             <Package className="size-4" />
             Manage listings
@@ -55,7 +69,7 @@ export function AppShell({ catalog, children }: AppShellProps) {
       </aside>
 
       <div className="relative flex min-h-full flex-1 flex-col">
-        <header className="border-b border-white/10 bg-slate-950/60 px-4 py-4 backdrop-blur-xl xl:hidden">
+        <header className="border-b border-white/[0.06] bg-[#0a0f0d]/80 px-4 py-4 backdrop-blur-xl xl:hidden">
           <ProductSwitcher
             products={catalog.products}
             selectedProduct={catalog.selectedProduct}
@@ -63,6 +77,7 @@ export function AppShell({ catalog, children }: AppShellProps) {
           />
         </header>
         <MobileNav />
+        <AppTopBar product={catalog.selectedProduct} />
         <main className="relative flex min-h-full flex-1 flex-col">{children}</main>
       </div>
     </div>
