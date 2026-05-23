@@ -1,10 +1,23 @@
 import type { Metadata } from "next";
-import { Inter, Geist_Mono } from "next/font/google";
+import localFont from "next/font/local";
+import { Geist_Mono } from "next/font/google";
+
 import "./globals.css";
 
-const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin"],
+const hkGroteskWide = localFont({
+  src: [
+    {
+      path: "./fonts/hkgroteskwide-regular.otf",
+      weight: "400",
+      style: "normal",
+    },
+    {
+      path: "./fonts/hkgroteskwide-bold.otf",
+      weight: "700",
+      style: "normal",
+    },
+  ],
+  variable: "--font-hk-grotesk-wide",
 });
 
 const geistMono = Geist_Mono({
@@ -26,9 +39,11 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`dark ${inter.variable} ${geistMono.variable} h-full antialiased`}
+      className={`dark ${hkGroteskWide.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-slate-950">{children}</body>
+      <body className="min-h-full flex flex-col bg-slate-950 font-sans">
+        {children}
+      </body>
     </html>
   );
 }
