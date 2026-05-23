@@ -1,6 +1,6 @@
 "use client";
 
-import { Card, LineChart, Title } from "@tremor/react";
+import { Card, AreaChart, Title } from "@tremor/react";
 
 import type { TrendPoint } from "@/lib/dashboard/get-dashboard-data";
 
@@ -42,7 +42,7 @@ export function PriceTrendChart({ data }: PriceTrendChartProps) {
   return (
     <Card className="border-border/60 bg-card/70 backdrop-blur">
       <Title className="text-foreground">30-Day Price Trends</Title>
-      <LineChart
+      <AreaChart
         className="mt-6 h-72"
         data={chartData}
         index="date"
