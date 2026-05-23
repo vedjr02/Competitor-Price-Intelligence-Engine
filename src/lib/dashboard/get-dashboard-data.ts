@@ -13,6 +13,7 @@ import {
   calculateVolatilityPercent,
 } from "@/lib/analytics/volatility";
 import type { ProgressMetric } from "@/components/tremor-blocks/intelligence-progress-cards";
+import type { ProductOption } from "@/lib/products/selection";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type { PriceHistory, Product } from "@/types/database";
 
@@ -41,6 +42,7 @@ export type TrackedProductRow = {
 };
 
 export type DashboardData = {
+  product: ProductOption | null;
   trends: TrendPoint[];
   volatilities: ProductVolatility[];
   arbitrageSpreads: ArbitrageSpread[];
@@ -48,7 +50,6 @@ export type DashboardData = {
   costComparison: CostComparisonPoint[];
   costComparisonSummary: CostComparisonSummary[];
   progressMetrics: ProgressMetric[];
-  productCount: number;
   snapshotCount: number;
   isLiveData: boolean;
 };
@@ -60,71 +61,79 @@ function hasSupabaseConfig() {
   );
 }
 
-function buildEmptyDashboard(): DashboardData {
+function buildEmptyDashboard(product: ProductOption | null = null): DashboardData {
   return {
+    product,
     trends: [],
     volatilities: [],
     arbitrageSpreads: [],
     trackedProducts: [],
     costComparison: [],
     costComparisonSummary: [],
-    progressMetrics: buildProgressMetrics({
-      productCount: 0,
+    progressMetrics: buildProductMetrics({
+      latestPrice: null,
+      priceChangePercent: null,
+      volatilityPercent: 0,
       snapshotCount: 0,
-      scrapedProducts: 0,
-      avgVolatility: 0,
-      arbitrageCount: 0,
+      currency: product?.currency ?? "EUR",
     }),
-    productCount: 0,
     snapshotCount: 0,
     isLiveData: hasSupabaseConfig(),
   };
 }
 
-function buildProgressMetrics(input: {
-  productCount: number;
+function buildProductMetrics(input: {
+  latestPrice: number | null;
+  priceChangePercent: number | null;
+  volatilityPercent: number;
   snapshotCount: number;
-  scrapedProducts: number;
-  avgVolatility: number;
-  arbitrageCount: number;
+  currency: string;
 }): ProgressMetric[] {
-  const productTarget = 12;
-  const snapshotTarget = 120;
-  const scrapeCoverage =
-    input.productCount === 0
-      ? 0
-      : (input.scrapedProducts / input.productCount) * 100;
-  const volatilityCap = 15;
+  const formatter = new Intl.NumberFormat("en-IE", {
+    style: "currency",
+    currency: input.currency,
+  });
+
+  const changeLabel =
+    input.priceChangePercent == null
+      ? "—"
+      : `${input.priceChangePercent >= 0 ? "+" : ""}${input.priceChangePercent.toFixed(1)}%`;
 
   return [
     {
-      name: "Tracked Listings",
-      stat: String(input.productCount),
-      limit: String(productTarget),
-      percentage: Math.min((input.productCount / productTarget) * 100, 100),
+      name: "Latest Price",
+      stat:
+        input.latestPrice != null ? formatter.format(input.latestPrice) : "—",
+      limit: "Live",
+      percentage: input.latestPrice != null ? 100 : 0,
     },
     {
-      name: "Price Snapshots",
+      name: "30d Change",
+      stat: changeLabel,
+      limit: "vs prior",
+      percentage:
+        input.priceChangePercent == null
+          ? 0
+          : Math.min(Math.abs(input.priceChangePercent) * 4, 100),
+    },
+    {
+      name: "Volatility",
+      stat: `${input.volatilityPercent.toFixed(1)}%`,
+      limit: "30d CV",
+      percentage: Math.min((input.volatilityPercent / 15) * 100, 100),
+    },
+    {
+      name: "Snapshots",
       stat: String(input.snapshotCount),
-      limit: String(snapshotTarget),
-      percentage: Math.min((input.snapshotCount / snapshotTarget) * 100, 100),
-    },
-    {
-      name: "Scrape Coverage",
-      stat: `${input.scrapedProducts}`,
-      limit: `${input.productCount || 0}`,
-      percentage: scrapeCoverage,
-    },
-    {
-      name: "Volatility Index",
-      stat: `${input.avgVolatility.toFixed(1)}%`,
-      limit: `${volatilityCap}%`,
-      percentage: Math.min((input.avgVolatility / volatilityCap) * 100, 100),
+      limit: "30d",
+      percentage: Math.min((input.snapshotCount / 30) * 100, 100),
     },
   ];
 }
 
-export async function getDashboardData(): Promise<DashboardData> {
+export async function getDashboardData(
+  productId?: string | null,
+): Promise<DashboardData> {
   if (!hasSupabaseConfig()) {
     return buildEmptyDashboard();
   }
@@ -142,7 +151,10 @@ export async function getDashboardData(): Promise<DashboardData> {
     return buildEmptyDashboard();
   }
 
-  const productIds = products.map((product) => product.id);
+  const activeProduct =
+    products.find((product) => product.id === productId) ?? products[0];
+
+  const productIds = [activeProduct.id];
 
   const { data: history } = await supabase
     .from("price_history")
@@ -152,113 +164,78 @@ export async function getDashboardData(): Promise<DashboardData> {
     .order("scraped_at", { ascending: true })
     .returns<PriceHistory[]>();
 
-  const productMap = new Map(products.map((product) => [product.id, product]));
   const historyEntries = history ?? [];
 
-  const trends: TrendPoint[] = historyEntries.map((entry) => {
-    const product = productMap.get(entry.product_id)!;
-    return {
-      date: entry.scraped_at.slice(0, 10),
-      competitor: product.competitor,
-      price: Number(entry.price),
-    };
-  });
+  const trends: TrendPoint[] = historyEntries.map((entry) => ({
+    date: entry.scraped_at.slice(0, 10),
+    competitor: activeProduct.competitor,
+    price: Number(entry.price),
+  }));
 
-  const pricesByProduct = new Map<string, number[]>();
-  for (const entry of historyEntries) {
-    const existing = pricesByProduct.get(entry.product_id) ?? [];
-    existing.push(Number(entry.price));
-    pricesByProduct.set(entry.product_id, existing);
-  }
+  const prices = historyEntries.map((entry) => Number(entry.price));
+  const latestEntry = historyEntries.at(-1);
+  const change = getLatestTwoPrices(prices);
 
-  const latestByProduct = new Map<string, { price: number; scrapedAt: string }>();
-  for (const entry of historyEntries) {
-    const current = latestByProduct.get(entry.product_id);
-    if (!current || entry.scraped_at > current.scrapedAt) {
-      latestByProduct.set(entry.product_id, {
-        price: Number(entry.price),
-        scrapedAt: entry.scraped_at,
-      });
-    }
-  }
+  const volatilityPercent = calculateVolatilityPercent(prices);
 
-  const volatilities: ProductVolatility[] = products.map((product) => {
-    const prices = pricesByProduct.get(product.id) ?? [];
-    const latest = latestByProduct.get(product.id);
-
-    return {
-      productId: product.id,
-      productName: product.name,
-      competitor: product.competitor,
+  const volatilities: ProductVolatility[] = [
+    {
+      productId: activeProduct.id,
+      productName: activeProduct.name,
+      competitor: activeProduct.competitor,
       volatility: calculateVolatility(prices),
-      volatilityPercent: calculateVolatilityPercent(prices),
-      latestPrice: latest?.price ?? 0,
-    };
-  });
+      volatilityPercent,
+      latestPrice: latestEntry ? Number(latestEntry.price) : 0,
+    },
+  ];
 
-  const trackedProducts: TrackedProductRow[] = products.map((product) => {
-    const prices = pricesByProduct.get(product.id) ?? [];
-    const latest = latestByProduct.get(product.id);
-    const change = getLatestTwoPrices(prices);
-
-    return {
-      id: product.id,
-      name: product.name,
-      competitor: product.competitor,
-      latestPrice: latest?.price ?? null,
-      latestScrapedAt: latest?.scrapedAt ?? null,
+  const trackedProducts: TrackedProductRow[] = [
+    {
+      id: activeProduct.id,
+      name: activeProduct.name,
+      competitor: activeProduct.competitor,
+      latestPrice: latestEntry ? Number(latestEntry.price) : null,
+      latestScrapedAt: latestEntry?.scraped_at ?? null,
       priceChangePercent: change?.deltaPercent ?? null,
-    };
-  });
+    },
+  ];
 
-  const arbitrageInput = products
-    .map((product) => {
-      const latest = latestByProduct.get(product.id);
-      if (!latest) return null;
-
-      return {
-        name: product.name,
-        competitor: product.competitor,
-        latestPrice: latest.price,
-      };
-    })
-    .filter(Boolean) as Array<{
-    name: string;
-    competitor: string;
-    latestPrice: number;
-  }>;
-
-  const arbitrageSpreads = calculateArbitrageSpreads(arbitrageInput);
-
-  const avgVolatility =
-    volatilities.length > 0
-      ? volatilities.reduce(
-          (sum, item) => sum + item.volatilityPercent,
-          0,
-        ) / volatilities.length
-      : 0;
-
-  const scrapedProducts = trackedProducts.filter(
-    (product) => product.latestPrice != null,
-  ).length;
+  const arbitrageSpreads = latestEntry
+    ? calculateArbitrageSpreads([
+        {
+          name: activeProduct.name,
+          competitor: activeProduct.competitor,
+          latestPrice: Number(latestEntry.price),
+        },
+      ])
+    : [];
 
   const { chartData, summary } = buildCostComparisonData(trends);
 
+  const product: ProductOption = {
+    id: activeProduct.id,
+    name: activeProduct.name,
+    competitor: activeProduct.competitor,
+    sku: activeProduct.sku,
+    currency: activeProduct.currency,
+    url: activeProduct.url,
+  };
+
   return {
+    product,
     trends,
     volatilities,
     arbitrageSpreads,
     trackedProducts,
     costComparison: chartData,
     costComparisonSummary: summary,
-    progressMetrics: buildProgressMetrics({
-      productCount: products.length,
+    progressMetrics: buildProductMetrics({
+      latestPrice: latestEntry ? Number(latestEntry.price) : null,
+      priceChangePercent: change?.deltaPercent ?? null,
+      volatilityPercent,
       snapshotCount: historyEntries.length,
-      scrapedProducts,
-      avgVolatility,
-      arbitrageCount: arbitrageSpreads.length,
+      currency: activeProduct.currency,
     }),
-    productCount: products.length,
     snapshotCount: historyEntries.length,
     isLiveData: true,
   };
