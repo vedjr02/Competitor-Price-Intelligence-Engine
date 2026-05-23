@@ -5,7 +5,7 @@ import { SELECTED_PRODUCT_COOKIE } from "@/lib/products/selection";
 import { captureProductPrice } from "@/lib/scraper/capture-product-price";
 import { logScrapeRun } from "@/lib/scraper/log-scrape-run";
 import { parseListingFromUrl } from "@/lib/scraper/parse-listing-from-url";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { createAuthSupabaseClient } from "@/lib/supabase/server-auth";
 import type { Product } from "@/types/database";
 
 type CreateProductBody = {
@@ -27,7 +27,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Sign in required" }, { status: 401 });
     }
 
-    const supabase = createServerSupabaseClient();
+    const supabase = await createAuthSupabaseClient();
 
     const { data, error } = await supabase
       .from("products")
@@ -51,7 +51,7 @@ export async function POST(request: Request) {
     let scrapeError: string | null = null;
 
     try {
-      const capture = await captureProductPrice(data.id);
+      const capture = await captureProductPrice(data.id, undefined, supabase);
       initialPrice = capture.price;
       await logScrapeRun({
         runType: "single",
@@ -65,13 +65,17 @@ export async function POST(request: Request) {
         captureError instanceof Error
           ? captureError.message
           : "Initial price capture failed";
-      await logScrapeRun({
-        runType: "single",
-        productsScraped: 0,
-        productsFailed: 1,
-        startedAt: new Date().toISOString(),
-        details: { productId: data.id, onCreate: true, error: scrapeError },
-      });
+      try {
+        await logScrapeRun({
+          runType: "single",
+          productsScraped: 0,
+          productsFailed: 1,
+          startedAt: new Date().toISOString(),
+          details: { productId: data.id, onCreate: true, error: scrapeError },
+        });
+      } catch {
+        // Scrape logging is optional when service role key is unavailable.
+      }
     }
 
     const response = NextResponse.json(
@@ -94,11 +98,17 @@ export async function POST(request: Request) {
 
 export async function GET() {
   try {
-    const supabase = createServerSupabaseClient();
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json({ error: "Sign in required" }, { status: 401 });
+    }
+
+    const supabase = await createAuthSupabaseClient();
 
     const { data: products, error } = await supabase
       .from("products")
       .select("*")
+      .eq("user_id", user.id)
       .order("updated_at", { ascending: false })
       .returns<Product[]>();
 

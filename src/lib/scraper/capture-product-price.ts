@@ -1,3 +1,5 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
+
 import { evaluatePriceAlerts } from "@/lib/alerts/evaluate-alerts";
 import { sendTriggeredAlertEmails } from "@/lib/email/send-price-alert";
 import { scrapePriceFromUrl } from "@/lib/scraper/scrape-price";
@@ -13,8 +15,9 @@ type CaptureResult = {
 export async function captureProductPrice(
   productId: string,
   selectorOverride?: string,
+  supabaseClient?: SupabaseClient,
 ): Promise<CaptureResult> {
-  const supabase = createServerSupabaseClient();
+  const supabase = supabaseClient ?? createServerSupabaseClient();
 
   const { data: product, error: productError } = await supabase
     .from("products")

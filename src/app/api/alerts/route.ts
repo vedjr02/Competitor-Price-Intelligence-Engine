@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getCurrentUser } from "@/lib/auth/get-session";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { createAuthSupabaseClient } from "@/lib/supabase/server-auth";
 import type { PriceAlert } from "@/types/database";
 
 function formatAlertsError(message: string) {
@@ -17,11 +17,17 @@ function formatAlertsError(message: string) {
 
 export async function GET() {
   try {
-    const supabase = createServerSupabaseClient();
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json({ error: "Sign in required" }, { status: 401 });
+    }
+
+    const supabase = await createAuthSupabaseClient();
 
     const { data, error } = await supabase
       .from("price_alerts")
       .select("*, products(name, competitor, sku)")
+      .eq("user_id", user.id)
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -61,7 +67,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Sign in required" }, { status: 401 });
     }
 
-    const supabase = createServerSupabaseClient();
+    const supabase = await createAuthSupabaseClient();
 
     const { data, error } = await supabase
       .from("price_alerts")

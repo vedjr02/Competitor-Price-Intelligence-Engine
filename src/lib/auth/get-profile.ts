@@ -1,5 +1,5 @@
 import { getCurrentUser } from "@/lib/auth/get-session";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { createAuthSupabaseClient } from "@/lib/supabase/server-auth";
 
 export type UserProfile = {
   id: string;
@@ -16,7 +16,7 @@ export async function getCurrentProfile(): Promise<{
   const user = await getCurrentUser();
   if (!user) return null;
 
-  const supabase = createServerSupabaseClient();
+  const supabase = await createAuthSupabaseClient();
   const { data: profile } = await supabase
     .from("profiles")
     .select("id, email, full_name, avatar_url, email_alerts_enabled")
