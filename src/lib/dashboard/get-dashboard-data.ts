@@ -2,10 +2,12 @@ import {
   calculateArbitrageSpreads,
   type ArbitrageSpread,
 } from "@/lib/analytics/arbitrage";
+import { getLatestTwoPrices } from "@/lib/analytics/price-change";
 import {
   calculateVolatility,
   calculateVolatilityPercent,
 } from "@/lib/analytics/volatility";
+import type { KpiStat } from "@/components/dashboard/kpi-grid";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type { PriceHistory, Product } from "@/types/database";
 
@@ -24,69 +26,25 @@ export type ProductVolatility = {
   latestPrice: number;
 };
 
+export type TrackedProductRow = {
+  id: string;
+  name: string;
+  competitor: string;
+  latestPrice: number | null;
+  latestScrapedAt: string | null;
+  priceChangePercent: number | null;
+};
+
 export type DashboardData = {
   trends: TrendPoint[];
   volatilities: ProductVolatility[];
   arbitrageSpreads: ArbitrageSpread[];
+  trackedProducts: TrackedProductRow[];
+  kpis: KpiStat[];
   productCount: number;
   snapshotCount: number;
+  isLiveData: boolean;
 };
-
-const MOCK_TRENDS: TrendPoint[] = [
-  { date: "2026-04-24", competitor: "Amazon", price: 129.99 },
-  { date: "2026-04-30", competitor: "Amazon", price: 127.5 },
-  { date: "2026-05-06", competitor: "Amazon", price: 124.99 },
-  { date: "2026-05-12", competitor: "Amazon", price: 121.0 },
-  { date: "2026-05-18", competitor: "Amazon", price: 119.99 },
-  { date: "2026-05-23", competitor: "Amazon", price: 118.5 },
-  { date: "2026-04-24", competitor: "BestBuy", price: 134.99 },
-  { date: "2026-04-30", competitor: "BestBuy", price: 132.0 },
-  { date: "2026-05-06", competitor: "BestBuy", price: 129.99 },
-  { date: "2026-05-12", competitor: "BestBuy", price: 128.5 },
-  { date: "2026-05-18", competitor: "BestBuy", price: 126.0 },
-  { date: "2026-05-23", competitor: "BestBuy", price: 125.99 },
-  { date: "2026-04-24", competitor: "Walmart", price: 122.99 },
-  { date: "2026-04-30", competitor: "Walmart", price: 120.5 },
-  { date: "2026-05-06", competitor: "Walmart", price: 118.99 },
-  { date: "2026-05-12", competitor: "Walmart", price: 117.0 },
-  { date: "2026-05-18", competitor: "Walmart", price: 115.99 },
-  { date: "2026-05-23", competitor: "Walmart", price: 114.5 },
-];
-
-function buildMockDashboardData(): DashboardData {
-  const latestByCompetitor = [
-    { name: "Wireless Headphones Pro", competitor: "Amazon", latestPrice: 118.5 },
-    { name: "Wireless Headphones Pro", competitor: "BestBuy", latestPrice: 125.99 },
-    { name: "Wireless Headphones Pro", competitor: "Walmart", latestPrice: 114.5 },
-  ];
-
-  const pricesByCompetitor = new Map<string, number[]>();
-  for (const point of MOCK_TRENDS) {
-    const existing = pricesByCompetitor.get(point.competitor) ?? [];
-    existing.push(point.price);
-    pricesByCompetitor.set(point.competitor, existing);
-  }
-
-  const volatilities: ProductVolatility[] = latestByCompetitor.map((entry) => {
-    const prices = pricesByCompetitor.get(entry.competitor) ?? [];
-    return {
-      productId: entry.competitor,
-      productName: entry.name,
-      competitor: entry.competitor,
-      volatility: calculateVolatility(prices),
-      volatilityPercent: calculateVolatilityPercent(prices),
-      latestPrice: entry.latestPrice,
-    };
-  });
-
-  return {
-    trends: MOCK_TRENDS,
-    volatilities,
-    arbitrageSpreads: calculateArbitrageSpreads(latestByCompetitor),
-    productCount: 3,
-    snapshotCount: MOCK_TRENDS.length,
-  };
-}
 
 function hasSupabaseConfig() {
   return Boolean(
@@ -95,9 +53,106 @@ function hasSupabaseConfig() {
   );
 }
 
+function buildEmptyDashboard(): DashboardData {
+  return {
+    trends: [],
+    volatilities: [],
+    arbitrageSpreads: [],
+    trackedProducts: [],
+    kpis: [
+      {
+        label: "Tracked Products",
+        value: "0",
+        helper: "Add competitor listings to begin",
+      },
+      {
+        label: "Avg Market Price",
+        value: "—",
+        helper: "No price snapshots yet",
+      },
+      {
+        label: "Top Arbitrage Spread",
+        value: "—",
+        helper: "Needs 2+ competitors per SKU",
+      },
+      {
+        label: "Avg Volatility",
+        value: "—",
+        helper: "30-day rolling window",
+      },
+    ],
+    productCount: 0,
+    snapshotCount: 0,
+    isLiveData: hasSupabaseConfig(),
+  };
+}
+
+function buildKpis(input: {
+  productCount: number;
+  snapshotCount: number;
+  avgPrice: number;
+  topSpread: ArbitrageSpread | null;
+  avgVolatility: number;
+  priceMovers: number;
+}): KpiStat[] {
+  const currency = new Intl.NumberFormat("en-IE", {
+    style: "currency",
+    currency: "EUR",
+  });
+
+  return [
+    {
+      label: "Tracked Products",
+      value: String(input.productCount),
+      helper: `${input.snapshotCount} price snapshots captured`,
+    },
+    {
+      label: "Avg Market Price",
+      value: input.avgPrice > 0 ? currency.format(input.avgPrice) : "—",
+      helper: "Across latest competitor listings",
+      trend: input.priceMovers > 0 ? "up" : "flat",
+      trendLabel:
+        input.priceMovers > 0 ? `${input.priceMovers} movers` : undefined,
+    },
+    {
+      label: "Top Arbitrage Spread",
+      value: input.topSpread
+        ? `${input.topSpread.spreadPercent.toFixed(1)}%`
+        : "—",
+      helper: input.topSpread
+        ? `${input.topSpread.lowCompetitor} → ${input.topSpread.highCompetitor}`
+        : "Compare same SKU across rivals",
+      trend: input.topSpread ? "up" : "flat",
+      trendLabel: input.topSpread
+        ? currency.format(input.topSpread.spread)
+        : undefined,
+    },
+    {
+      label: "Avg Volatility",
+      value:
+        input.avgVolatility > 0
+          ? `${input.avgVolatility.toFixed(2)}%`
+          : "—",
+      helper: "30-day coefficient of variation",
+      trend:
+        input.avgVolatility > 5
+          ? "up"
+          : input.avgVolatility > 0
+            ? "down"
+            : "flat",
+      trendLabel:
+        input.avgVolatility > 5
+          ? "Elevated"
+          : input.avgVolatility > 0
+            ? "Stable"
+            : undefined,
+    },
+  ];
+}
+
 export async function getDashboardData(): Promise<DashboardData> {
   if (!hasSupabaseConfig()) {
-    return buildMockDashboardData();
+    return buildEmptyDashboard();
   }
 
   const supabase = createServerSupabaseClient();
@@ -110,7 +165,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     .returns<Product[]>();
 
   if (productsError || !products?.length) {
-    return buildMockDashboardData();
+    return buildEmptyDashboard();
   }
 
   const productIds = products.map((product) => product.id);
@@ -123,13 +178,10 @@ export async function getDashboardData(): Promise<DashboardData> {
     .order("scraped_at", { ascending: true })
     .returns<PriceHistory[]>();
 
-  if (historyError || !history?.length) {
-    return buildMockDashboardData();
-  }
-
   const productMap = new Map(products.map((product) => [product.id, product]));
+  const historyEntries = history ?? [];
 
-  const trends: TrendPoint[] = history.map((entry) => {
+  const trends: TrendPoint[] = historyEntries.map((entry) => {
     const product = productMap.get(entry.product_id)!;
     return {
       date: entry.scraped_at.slice(0, 10),
@@ -139,14 +191,14 @@ export async function getDashboardData(): Promise<DashboardData> {
   });
 
   const pricesByProduct = new Map<string, number[]>();
-  for (const entry of history) {
+  for (const entry of historyEntries) {
     const existing = pricesByProduct.get(entry.product_id) ?? [];
     existing.push(Number(entry.price));
     pricesByProduct.set(entry.product_id, existing);
   }
 
   const latestByProduct = new Map<string, { price: number; scrapedAt: string }>();
-  for (const entry of history) {
+  for (const entry of historyEntries) {
     const current = latestByProduct.get(entry.product_id);
     if (!current || entry.scraped_at > current.scrapedAt) {
       latestByProduct.set(entry.product_id, {
@@ -170,6 +222,21 @@ export async function getDashboardData(): Promise<DashboardData> {
     };
   });
 
+  const trackedProducts: TrackedProductRow[] = products.map((product) => {
+    const prices = pricesByProduct.get(product.id) ?? [];
+    const latest = latestByProduct.get(product.id);
+    const change = getLatestTwoPrices(prices);
+
+    return {
+      id: product.id,
+      name: product.name,
+      competitor: product.competitor,
+      latestPrice: latest?.price ?? null,
+      latestScrapedAt: latest?.scrapedAt ?? null,
+      priceChangePercent: change?.deltaPercent ?? null,
+    };
+  });
+
   const arbitrageInput = products
     .map((product) => {
       const latest = latestByProduct.get(product.id);
@@ -187,11 +254,45 @@ export async function getDashboardData(): Promise<DashboardData> {
     latestPrice: number;
   }>;
 
+  const arbitrageSpreads = calculateArbitrageSpreads(arbitrageInput);
+  const latestPrices = trackedProducts
+    .map((product) => product.latestPrice)
+    .filter((price): price is number => price != null);
+
+  const avgPrice =
+    latestPrices.length > 0
+      ? latestPrices.reduce((sum, price) => sum + price, 0) / latestPrices.length
+      : 0;
+
+  const avgVolatility =
+    volatilities.length > 0
+      ? volatilities.reduce(
+          (sum, item) => sum + item.volatilityPercent,
+          0,
+        ) / volatilities.length
+      : 0;
+
+  const priceMovers = trackedProducts.filter(
+    (product) =>
+      product.priceChangePercent != null &&
+      Math.abs(product.priceChangePercent) >= 1,
+  ).length;
+
   return {
     trends,
     volatilities,
-    arbitrageSpreads: calculateArbitrageSpreads(arbitrageInput),
+    arbitrageSpreads,
+    trackedProducts,
+    kpis: buildKpis({
+      productCount: products.length,
+      snapshotCount: historyEntries.length,
+      avgPrice,
+      topSpread: arbitrageSpreads[0] ?? null,
+      avgVolatility,
+      priceMovers,
+    }),
     productCount: products.length,
-    snapshotCount: history.length,
+    snapshotCount: historyEntries.length,
+    isLiveData: true,
   };
 }
