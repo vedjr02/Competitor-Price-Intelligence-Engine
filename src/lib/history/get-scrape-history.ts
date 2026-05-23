@@ -15,7 +15,7 @@ export async function getScrapeHistory(limit = 50) {
   }
 
   const entries: ScrapeHistoryEntry[] = history.map((row) => {
-    const product = row.products as {
+    const product = row.products as unknown as {
       name: string;
       competitor: string;
       sku: string | null;

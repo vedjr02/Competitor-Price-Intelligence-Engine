@@ -38,7 +38,7 @@ export async function GET() {
     ];
 
     const rows = (data ?? []).map((row) => {
-      const product = row.products as {
+      const product = row.products as unknown as {
         name: string;
         sku: string | null;
         competitor: string;
