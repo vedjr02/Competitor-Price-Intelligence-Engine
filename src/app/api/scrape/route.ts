@@ -5,7 +5,7 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 type ScrapeRequestBody = {
   productId: string;
-  selector: string;
+  selector?: string;
 };
 
 export async function POST(request: Request) {
@@ -13,18 +13,15 @@ export async function POST(request: Request) {
     const body = (await request.json()) as ScrapeRequestBody;
     const { productId, selector } = body;
 
-    if (!productId || !selector) {
-      return NextResponse.json(
-        { error: "productId and selector are required" },
-        { status: 400 },
-      );
+    if (!productId) {
+      return NextResponse.json({ error: "productId is required" }, { status: 400 });
     }
 
     const supabase = createServerSupabaseClient();
 
     const { data: product, error: productError } = await supabase
       .from("products")
-      .select("id, url")
+      .select("id, url, price_selector")
       .eq("id", productId)
       .single();
 
@@ -32,9 +29,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Product not found" }, { status: 404 });
     }
 
+    const resolvedSelector = selector ?? product.price_selector;
+    if (!resolvedSelector) {
+      return NextResponse.json(
+        { error: "No CSS selector configured for this product" },
+        { status: 400 },
+      );
+    }
+
     const { price, rawText } = await scrapePriceFromUrl({
       url: product.url,
-      selector,
+      selector: resolvedSelector,
     });
 
     const { data: priceRecord, error: insertError } = await supabase
@@ -42,7 +47,7 @@ export async function POST(request: Request) {
       .insert({
         product_id: productId,
         price,
-        raw_selector: selector,
+        raw_selector: resolvedSelector,
         scraped_at: new Date().toISOString(),
       })
       .select("id, price, scraped_at")
@@ -51,6 +56,11 @@ export async function POST(request: Request) {
     if (insertError) {
       return NextResponse.json({ error: insertError.message }, { status: 500 });
     }
+
+    await supabase
+      .from("products")
+      .update({ updated_at: new Date().toISOString() })
+      .eq("id", productId);
 
     return NextResponse.json({
       success: true,
