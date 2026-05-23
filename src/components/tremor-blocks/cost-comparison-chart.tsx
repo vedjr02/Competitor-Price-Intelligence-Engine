@@ -1,6 +1,6 @@
 "use client";
 
-import { AreaChart } from "@tremor/react";
+import { AreaChart, type CustomTooltipProps } from "@tremor/react";
 
 import {
   compactCurrency,
@@ -14,23 +14,12 @@ type CostComparisonChartProps = {
   summary: CostComparisonSummary[];
 };
 
-type TooltipPayload = {
-  dataKey: string;
-  value: number;
-  color: string;
-  payload?: CostComparisonPoint;
-};
-
-type CustomTooltipProps = {
-  payload?: TooltipPayload[];
-  active?: boolean;
-  label?: string;
-};
-
 function CustomTooltip({ payload, active, label }: CustomTooltipProps) {
   if (!active || !payload?.length) return null;
 
-  const margin = payload[0]?.payload?.["Arbitrage margin"] ?? 0;
+  const margin = (payload[0]?.payload as CostComparisonPoint | undefined)?.[
+    "Arbitrage margin"
+  ] ?? 0;
 
   return (
     <div className="rounded-tremor-default border border-tremor-border bg-tremor-background text-tremor-default shadow-tremor-dropdown dark:border-dark-tremor-border dark:bg-dark-tremor-background dark:shadow-dark-tremor-dropdown">
@@ -46,7 +35,7 @@ function CustomTooltip({ payload, active, label }: CustomTooltipProps) {
           </p>
           <span
             className={classNames(
-              margin < 0
+              Number(margin) < 0
                 ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-400/10 dark:text-emerald-400"
                 : "bg-red-100 text-red-800 dark:bg-red-400/10 dark:text-red-400",
               "inline-flex rounded px-2 py-0.5 text-tremor-label font-medium",
@@ -58,7 +47,7 @@ function CustomTooltip({ payload, active, label }: CustomTooltipProps) {
         <div className="mt-2 space-y-1">
           {payload.map((category) => (
             <div
-              key={category.dataKey}
+              key={String(category.dataKey)}
               className="flex items-center justify-between space-x-8"
             >
               <div className="flex items-center space-x-2">
@@ -76,7 +65,7 @@ function CustomTooltip({ payload, active, label }: CustomTooltipProps) {
                 </p>
               </div>
               <span className="font-medium tabular-nums text-tremor-content-strong dark:text-dark-tremor-content-strong">
-                {compactCurrency(category.value)}
+                {compactCurrency(Number(category.value))}
               </span>
             </div>
           ))}
