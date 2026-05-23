@@ -1,4 +1,5 @@
 import { ScrapeButton } from "@/components/products/scrape-button";
+import { ExportCsvButton } from "@/components/export/export-csv-button";
 
 type DashboardHeaderProps = {
   productCount: number;
@@ -50,6 +51,7 @@ export function DashboardHeader({
           </p>
         </div>
         <ScrapeButton label="Run market scan" variant="default" size="default" />
+        <ExportCsvButton />
       </div>
     </header>
   );
