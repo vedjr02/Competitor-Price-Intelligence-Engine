@@ -15,8 +15,8 @@ export default async function ProductsPage() {
           Competitor listings
         </h1>
         <p className="max-w-2xl text-tremor-default leading-6 text-dark-tremor-content">
-          Register competitor product URLs, configure CSS selectors, and trigger
-          live price capture runs.
+          Paste a product link from Amazon or any supported store — we detect
+          the listing details and start tracking prices automatically.
         </p>
       </header>
 

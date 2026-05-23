@@ -13,31 +13,57 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import type { ParsedListing } from "@/lib/scraper/parse-listing-from-url";
 
 export function AddProductForm() {
   const router = useRouter();
+  const [url, setUrl] = useState("");
+  const [preview, setPreview] = useState<ParsedListing | null>(null);
   const [loading, setLoading] = useState(false);
+  const [previewing, setPreviewing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  async function handlePreview() {
+    if (!url.trim()) return;
+
+    setPreviewing(true);
+    setError(null);
+    setPreview(null);
+
+    try {
+      const response = await fetch("/api/products/preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error ?? "Could not read this listing");
+      }
+
+      setPreview(data.listing);
+    } catch (previewError) {
+      setError(
+        previewError instanceof Error
+          ? previewError.message
+          : "Could not read this listing",
+      );
+    } finally {
+      setPreviewing(false);
+    }
+  }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setLoading(true);
     setError(null);
 
-    const formData = new FormData(event.currentTarget);
-
     try {
       const response = await fetch("/api/products", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: formData.get("name"),
-          competitor: formData.get("competitor"),
-          url: formData.get("url"),
-          sku: formData.get("sku") || undefined,
-          currency: formData.get("currency") || "EUR",
-          price_selector: formData.get("price_selector") || undefined,
-        }),
+        body: JSON.stringify({ url }),
       });
 
       const data = await response.json();
@@ -45,7 +71,8 @@ export function AddProductForm() {
         throw new Error(data.error ?? "Failed to create product");
       }
 
-      event.currentTarget.reset();
+      setUrl("");
+      setPreview(null);
       router.refresh();
     } catch (submitError) {
       setError(
@@ -63,47 +90,61 @@ export function AddProductForm() {
       <CardHeader>
         <CardTitle>Track New Competitor Listing</CardTitle>
         <CardDescription>
-          Add a product URL and CSS selector to begin live price intelligence.
+          Paste an Amazon or shopping-site product link — we&apos;ll fill in the
+          name, competitor, SKU, and price selector automatically.
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="grid gap-4 md:grid-cols-2">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="name">Product name</Label>
-            <Input id="name" name="name" placeholder="Sony WH-1000XM5" required />
+            <Label htmlFor="url">Product URL</Label>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Input
+                id="url"
+                name="url"
+                type="url"
+                placeholder="https://www.amazon.com/dp/..."
+                value={url}
+                onChange={(event) => {
+                  setUrl(event.target.value);
+                  setPreview(null);
+                }}
+                required
+              />
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={!url.trim() || previewing}
+                onClick={handlePreview}
+                className="shrink-0"
+              >
+                {previewing ? "Reading..." : "Preview"}
+              </Button>
+            </div>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="competitor">Competitor</Label>
-            <Input id="competitor" name="competitor" placeholder="Amazon" required />
-          </div>
-          <div className="space-y-2 md:col-span-2">
-            <Label htmlFor="url">Listing URL</Label>
-            <Input
-              id="url"
-              name="url"
-              type="url"
-              placeholder="https://competitor.com/product/..."
-              required
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="sku">SKU (optional)</Label>
-            <Input id="sku" name="sku" placeholder="WH1000XM5-BLK" />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="currency">Currency</Label>
-            <Input id="currency" name="currency" defaultValue="EUR" />
-          </div>
-          <div className="space-y-2 md:col-span-2">
-            <Label htmlFor="price_selector">CSS price selector</Label>
-            <Input
-              id="price_selector"
-              name="price_selector"
-              defaultValue='.price, [itemprop="price"], .a-price .a-offscreen'
-            />
-          </div>
-          <div className="md:col-span-2 flex items-center gap-3">
-            <Button type="submit" disabled={loading}>
+
+          {preview ? (
+            <div className="rounded-lg border border-border/60 bg-muted/30 p-4 text-sm">
+              <p className="font-bold text-foreground">{preview.name}</p>
+              <dl className="mt-3 grid gap-2 sm:grid-cols-2">
+                <div>
+                  <dt className="text-muted-foreground">Competitor</dt>
+                  <dd>{preview.competitor}</dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground">Currency</dt>
+                  <dd>{preview.currency}</dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground">SKU / ID</dt>
+                  <dd>{preview.sku ?? "Not detected"}</dd>
+                </div>
+              </dl>
+            </div>
+          ) : null}
+
+          <div className="flex items-center gap-3">
+            <Button type="submit" disabled={loading || !url.trim()}>
               {loading ? "Adding..." : "Add Product"}
             </Button>
             {error ? <p className="text-sm text-rose-400">{error}</p> : null}
