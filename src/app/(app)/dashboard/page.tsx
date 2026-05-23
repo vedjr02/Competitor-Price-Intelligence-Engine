@@ -1,4 +1,5 @@
 import { ArbitrageSpreads } from "@/components/dashboard/arbitrage-spreads";
+import { CompetitorShareChart } from "@/components/dashboard/competitor-share-chart";
 import { DashboardHeader } from "@/components/dashboard/dashboard-header";
 import { KpiGrid } from "@/components/dashboard/kpi-grid";
 import { MarketPulseTable } from "@/components/dashboard/market-pulse-table";
@@ -28,6 +29,10 @@ export default async function DashboardPage() {
 
       <section className="grid gap-6 xl:grid-cols-2">
         <MarketPulseTable products={data.trackedProducts} />
+        <CompetitorShareChart products={data.trackedProducts} />
+      </section>
+
+      <section>
         <ArbitrageSpreads spreads={data.arbitrageSpreads} />
       </section>
     </div>
