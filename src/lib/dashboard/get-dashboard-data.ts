@@ -50,6 +50,12 @@ export type DashboardData = {
   costComparison: CostComparisonPoint[];
   costComparisonSummary: CostComparisonSummary[];
   progressMetrics: ProgressMetric[];
+  priceStats: {
+    average: number | null;
+    lowest: number | null;
+    lowestDate: string | null;
+    highest: number | null;
+  };
   snapshotCount: number;
   isLiveData: boolean;
 };
@@ -76,7 +82,15 @@ function buildEmptyDashboard(product: ProductOption | null = null): DashboardDat
       volatilityPercent: 0,
       snapshotCount: 0,
       currency: product?.currency ?? "EUR",
+      average: null,
+      lowest: null,
     }),
+    priceStats: {
+      average: null,
+      lowest: null,
+      lowestDate: null,
+      highest: null,
+    },
     snapshotCount: 0,
     isLiveData: hasSupabaseConfig(),
   };
@@ -88,6 +102,8 @@ function buildProductMetrics(input: {
   volatilityPercent: number;
   snapshotCount: number;
   currency: string;
+  average: number | null;
+  lowest: number | null;
 }): ProgressMetric[] {
   const formatter = new Intl.NumberFormat("en-IE", {
     style: "currency",
@@ -101,20 +117,25 @@ function buildProductMetrics(input: {
 
   return [
     {
+      name: "Average Price",
+      stat:
+        input.average != null ? formatter.format(input.average) : "—",
+      limit: "30d mean",
+      percentage: input.average != null ? 72 : 0,
+    },
+    {
+      name: "Lowest Recorded",
+      stat:
+        input.lowest != null ? formatter.format(input.lowest) : "—",
+      limit: "30d floor",
+      percentage: input.lowest != null ? 58 : 0,
+    },
+    {
       name: "Latest Price",
       stat:
         input.latestPrice != null ? formatter.format(input.latestPrice) : "—",
-      limit: "Live",
+      limit: changeLabel,
       percentage: input.latestPrice != null ? 100 : 0,
-    },
-    {
-      name: "30d Change",
-      stat: changeLabel,
-      limit: "vs prior",
-      percentage:
-        input.priceChangePercent == null
-          ? 0
-          : Math.min(Math.abs(input.priceChangePercent) * 4, 100),
     },
     {
       name: "Volatility",
@@ -122,13 +143,34 @@ function buildProductMetrics(input: {
       limit: "30d CV",
       percentage: Math.min((input.volatilityPercent / 15) * 100, 100),
     },
-    {
-      name: "Snapshots",
-      stat: String(input.snapshotCount),
-      limit: "30d",
-      percentage: Math.min((input.snapshotCount / 30) * 100, 100),
-    },
   ];
+}
+
+function computePriceStats(prices: TrendPoint[]) {
+  if (prices.length === 0) {
+    return {
+      average: null,
+      lowest: null,
+      lowestDate: null,
+      highest: null,
+    };
+  }
+
+  const values = prices.map((point) => point.price);
+  const average = values.reduce((sum, value) => sum + value, 0) / values.length;
+  let lowest = values[0];
+  let lowestDate: string | null = prices[0].date;
+  let highest = values[0];
+
+  for (const point of prices) {
+    if (point.price < lowest) {
+      lowest = point.price;
+      lowestDate = point.date;
+    }
+    if (point.price > highest) highest = point.price;
+  }
+
+  return { average, lowest, lowestDate, highest };
 }
 
 export async function getDashboardData(
@@ -211,6 +253,7 @@ export async function getDashboardData(
     : [];
 
   const { chartData, summary } = buildCostComparisonData(trends);
+  const priceStats = computePriceStats(trends);
 
   const product: ProductOption = {
     id: activeProduct.id,
@@ -235,7 +278,10 @@ export async function getDashboardData(
       volatilityPercent,
       snapshotCount: historyEntries.length,
       currency: activeProduct.currency,
+      average: priceStats.average,
+      lowest: priceStats.lowest,
     }),
+    priceStats,
     snapshotCount: historyEntries.length,
     isLiveData: true,
   };

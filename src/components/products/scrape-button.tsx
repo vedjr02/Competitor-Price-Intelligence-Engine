@@ -77,7 +77,7 @@ export function ScrapeButton({
         size={size}
         disabled={loading}
         onClick={handleScrape}
-        className="rounded-xl font-bold"
+        className="rounded-xl font-bold bg-emerald-500 text-[#022c22] hover:bg-emerald-400"
       >
         {loading ? (
           <Loader2 className="size-4 animate-spin" />

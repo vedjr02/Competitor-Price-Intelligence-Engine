@@ -1,8 +1,12 @@
-import { ExternalLink } from "lucide-react";
+import Link from "next/link";
+import { Bell, ExternalLink, Package } from "lucide-react";
 
+import {
+  DashboardInsightsPanel,
+  MetricCard,
+} from "@/components/dashboard/dashboard-insights-panel";
 import { PriceTrendChart } from "@/components/dashboard/price-trend-chart";
 import { ScrapeButton } from "@/components/products/scrape-button";
-import { ExportCsvButton } from "@/components/export/export-csv-button";
 import { GlassPanel } from "@/components/ui/glass-panel";
 import type { DashboardData } from "@/lib/dashboard/get-dashboard-data";
 
@@ -21,51 +25,62 @@ function formatDate(value: string | null) {
 export function DashboardHeader({ data }: DashboardHeaderProps) {
   const product = data.product;
   const latest = data.trackedProducts[0];
+  const change = latest?.priceChangePercent;
 
   return (
-    <header className="space-y-6">
+    <GlassPanel className="p-6" glow>
       <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-        <div className="space-y-4">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full border border-blue-400/20 bg-blue-500/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.22em] text-blue-200">
-              Active overview
-            </span>
-            <span
-              className={
-                data.isLiveData
-                  ? "rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.22em] text-emerald-300"
-                  : "rounded-full border border-amber-400/20 bg-amber-400/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.22em] text-amber-300"
-              }
-            >
-              {data.isLiveData ? "Live data" : "Awaiting connection"}
-            </span>
+        <div className="flex gap-4">
+          <div className="hidden size-20 shrink-0 items-center justify-center rounded-2xl border border-emerald-500/20 bg-emerald-500/10 sm:flex">
+            <Package className="size-8 text-emerald-400" />
           </div>
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-300">
+                Tracking
+              </span>
+              {latest?.latestPrice != null ? (
+                <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">
+                  In stock signal
+                </span>
+              ) : null}
+              <span
+                className={
+                  data.isLiveData
+                    ? "rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-400"
+                    : "rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-amber-300"
+                }
+              >
+                {data.isLiveData ? "Live sync" : "Offline"}
+              </span>
+            </div>
 
-          {product ? (
-            <div className="space-y-2">
-              <h1 className="max-w-3xl text-3xl font-bold tracking-tight text-white sm:text-4xl">
-                {product.name}
-              </h1>
-              <p className="text-sm text-slate-400">
-                {product.competitor}
-                {product.sku ? ` · SKU ${product.sku}` : " · SKU pending"}
-                {" · "}
-                Last capture {formatDate(latest?.latestScrapedAt ?? null)}
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              <h1 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
-                No product selected
-              </h1>
-              <p className="text-sm text-slate-400">
-                Add a competitor listing to start tracking price intelligence.
-              </p>
-            </div>
-          )}
+            {product ? (
+              <>
+                <h1 className="max-w-3xl text-2xl font-bold tracking-tight text-white sm:text-3xl">
+                  {product.name}
+                </h1>
+                <p className="text-sm text-slate-500">
+                  {product.competitor}
+                  {product.sku ? ` · ${product.sku}` : ""}
+                  {" · "}
+                  Last capture {formatDate(latest?.latestScrapedAt ?? null)}
+                </p>
+              </>
+            ) : (
+              <>
+                <h1 className="text-2xl font-bold text-white sm:text-3xl">
+                  No product selected
+                </h1>
+                <p className="text-sm text-slate-500">
+                  Paste a URL on Products to start precision tracking.
+                </p>
+              </>
+            )}
+          </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2">
           {product ? (
             <>
               <ScrapeButton
@@ -74,38 +89,79 @@ export function DashboardHeader({ data }: DashboardHeaderProps) {
                 variant="default"
                 size="default"
               />
+              <Link
+                href="/alerts"
+                className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-4 py-2 text-sm font-bold text-[#022c22] transition hover:bg-emerald-400"
+              >
+                <Bell className="size-4" />
+                Set alert
+              </Link>
               <a
                 href={product.url}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm font-bold text-slate-200 transition hover:border-white/20 hover:bg-white/[0.07]"
+                className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2 text-sm font-bold text-slate-300 transition hover:border-emerald-500/30 hover:text-white"
               >
                 View listing
                 <ExternalLink className="size-4" />
               </a>
             </>
           ) : null}
-          <ExportCsvButton />
         </div>
       </div>
-    </header>
+    </GlassPanel>
   );
 }
 
 export function DashboardHeroStats({ data }: DashboardHeaderProps) {
+  const currency = data.product?.currency ?? "EUR";
+  const formatter = new Intl.NumberFormat("en-IE", {
+    style: "currency",
+    currency,
+  });
+  const change = data.trackedProducts[0]?.priceChangePercent;
+
   return (
     <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-      {data.progressMetrics.map((metric) => (
-        <GlassPanel key={metric.name} className="p-5" glow>
-          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">
-            {metric.name}
-          </p>
-          <p className="mt-3 text-3xl font-bold tracking-tight text-white">
-            {metric.stat}
-          </p>
-          <p className="mt-2 text-xs text-slate-500">{metric.limit}</p>
-        </GlassPanel>
-      ))}
+      <MetricCard
+        label="Average price"
+        value={
+          data.priceStats.average != null
+            ? formatter.format(data.priceStats.average)
+            : "—"
+        }
+        sublabel="30-day mean"
+      />
+      <MetricCard
+        label="Lowest recorded"
+        value={
+          data.priceStats.lowest != null
+            ? formatter.format(data.priceStats.lowest)
+            : "—"
+        }
+        sublabel={data.priceStats.lowestDate ?? "30-day floor"}
+      />
+      <MetricCard
+        label="Latest price"
+        value={
+          data.trackedProducts[0]?.latestPrice != null
+            ? formatter.format(data.trackedProducts[0].latestPrice!)
+            : "—"
+        }
+        sublabel={
+          change != null
+            ? `${change >= 0 ? "+" : ""}${change.toFixed(1)}% vs prior`
+            : "Live capture"
+        }
+        trend={
+          change == null ? "neutral" : change >= 0 ? "up" : "down"
+        }
+      />
+      <MetricCard
+        label="Volatility"
+        value={`${data.volatilities[0]?.volatilityPercent.toFixed(1) ?? "0.0"}%`}
+        sublabel={`${data.snapshotCount} snapshots · 30d CV`}
+      />
     </section>
   );
 }
@@ -113,15 +169,18 @@ export function DashboardHeroStats({ data }: DashboardHeaderProps) {
 export function DashboardTrendSection({ data }: DashboardHeaderProps) {
   return (
     <GlassPanel className="p-6">
-      <div className="mb-6 flex items-end justify-between gap-4">
-        <div>
-          <h2 className="text-lg font-bold text-white">Price history</h2>
-          <p className="mt-1 text-sm text-slate-400">
-            30-day capture trend for the selected listing only.
-          </p>
-        </div>
+      <div className="mb-2">
+        <h2 className="text-lg font-bold text-white">Price history</h2>
+        <p className="mt-1 text-sm text-slate-500">
+          Precision capture trend for the selected listing.
+        </p>
       </div>
-      <PriceTrendChart data={data.trends} />
+      <PriceTrendChart
+        data={data.trends}
+        currency={data.product?.currency ?? "EUR"}
+      />
     </GlassPanel>
   );
 }
+
+export { DashboardInsightsPanel };
