@@ -1,9 +1,13 @@
 import { NextResponse } from "next/server";
 
+import { evaluatePriceAlerts } from "@/lib/alerts/evaluate-alerts";
+import { logScrapeRun } from "@/lib/scraper/log-scrape-run";
 import { scrapePriceFromUrl } from "@/lib/scraper/scrape-price";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 export async function POST() {
+  const startedAt = new Date().toISOString();
+
   try {
     const supabase = createServerSupabaseClient();
 
@@ -20,9 +24,18 @@ export async function POST() {
     }
 
     const results = [];
+    const allTriggeredAlerts = [];
 
     for (const product of products) {
       try {
+        const { data: previousRecord } = await supabase
+          .from("price_history")
+          .select("price")
+          .eq("product_id", product.id)
+          .order("scraped_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
         const { price, rawText } = await scrapePriceFromUrl({
           url: product.url,
           selector: product.price_selector,
@@ -46,6 +59,14 @@ export async function POST() {
           .update({ updated_at: new Date().toISOString() })
           .eq("id", product.id);
 
+        const triggeredAlerts = await evaluatePriceAlerts(
+          product.id,
+          price,
+          previousRecord ? Number(previousRecord.price) : null,
+        );
+
+        allTriggeredAlerts.push(...triggeredAlerts);
+
         results.push({
           productId: product.id,
           name: product.name,
@@ -54,6 +75,7 @@ export async function POST() {
           price,
           rawText,
           record,
+          triggeredAlerts,
         });
       } catch (scrapeError) {
         results.push({
@@ -70,14 +92,38 @@ export async function POST() {
     }
 
     const succeeded = results.filter((result) => result.success).length;
+    const failed = results.length - succeeded;
+
+    await logScrapeRun({
+      runType: "batch",
+      productsScraped: succeeded,
+      productsFailed: failed,
+      startedAt,
+      details: {
+        total: products.length,
+        alertsTriggered: allTriggeredAlerts.length,
+        results,
+      },
+    });
 
     return NextResponse.json({
       success: succeeded > 0,
       scraped: succeeded,
       total: products.length,
+      triggeredAlerts: allTriggeredAlerts,
       results,
     });
   } catch (error) {
+    await logScrapeRun({
+      runType: "batch",
+      productsScraped: 0,
+      productsFailed: 0,
+      startedAt,
+      details: {
+        error: error instanceof Error ? error.message : "Batch scrape failed",
+      },
+    });
+
     const message = error instanceof Error ? error.message : "Batch scrape failed";
     return NextResponse.json({ error: message }, { status: 500 });
   }
