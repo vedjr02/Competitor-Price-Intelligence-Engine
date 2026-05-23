@@ -2,14 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  BarChart3,
-  Package,
-  Radar,
-  TrendingUp,
-} from "lucide-react";
+import { BarChart3, Package } from "lucide-react";
 
-import { cn } from "@/lib/utils";
+import { classNames } from "@/lib/tremor/class-names";
 
 const navItems = [
   { href: "/dashboard", label: "Overview", icon: BarChart3 },
@@ -20,22 +15,17 @@ export function AppSidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="hidden w-64 shrink-0 border-r border-border/60 bg-card/40 backdrop-blur xl:flex xl:flex-col">
-      <div className="border-b border-border/60 px-6 py-6">
-        <div className="flex items-center gap-3">
-          <div className="flex size-10 items-center justify-center rounded-xl bg-primary/15 text-primary">
-            <Radar className="size-5" />
-          </div>
-          <div>
-            <p className="text-sm font-semibold tracking-tight">
-              Price Intelligence
-            </p>
-            <p className="text-xs text-muted-foreground">Arbitrage Engine</p>
-          </div>
-        </div>
+    <aside className="hidden w-60 shrink-0 border-r border-dark-tremor-border bg-slate-950 xl:flex xl:flex-col">
+      <div className="border-b border-dark-tremor-border px-6 py-5">
+        <p className="text-tremor-label font-medium uppercase tracking-wider text-dark-tremor-content-subtle">
+          Tremor Analytics
+        </p>
+        <p className="mt-1 text-tremor-title font-semibold text-dark-tremor-content-strong">
+          Price Intelligence
+        </p>
       </div>
 
-      <nav className="flex flex-1 flex-col gap-1 p-4">
+      <nav className="flex flex-1 flex-col gap-1 p-3">
         {navItems.map(({ href, label, icon: Icon }) => {
           const active = pathname === href || pathname.startsWith(`${href}/`);
 
@@ -43,31 +33,27 @@ export function AppSidebar() {
             <Link
               key={href}
               href={href}
-              className={cn(
-                "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors",
+              className={classNames(
+                "flex items-center gap-3 rounded-tremor-default px-3 py-2 text-tremor-default font-medium transition-colors",
                 active
-                  ? "bg-primary/15 text-primary"
-                  : "text-muted-foreground hover:bg-accent hover:text-foreground",
+                  ? "bg-dark-tremor-background-subtle text-dark-tremor-brand"
+                  : "text-dark-tremor-content hover:bg-dark-tremor-background-subtle hover:text-dark-tremor-content-strong",
               )}
             >
-              <Icon className="size-4" />
+              <Icon className="size-4 shrink-0" />
               {label}
             </Link>
           );
         })}
       </nav>
 
-      <div className="border-t border-border/60 p-4">
-        <div className="rounded-xl border border-border/60 bg-background/50 p-4">
-          <div className="flex items-center gap-2 text-sm font-medium">
-            <TrendingUp className="size-4 text-primary" />
-            Market Pulse
-          </div>
-          <p className="mt-2 text-xs leading-5 text-muted-foreground">
-            Track competitor moves, volatility spikes, and arbitrage windows in
-            one workspace.
-          </p>
-        </div>
+      <div className="border-t border-dark-tremor-border p-4">
+        <p className="text-tremor-label text-dark-tremor-content-subtle">
+          Workspace
+        </p>
+        <p className="mt-1 text-tremor-default leading-5 text-dark-tremor-content">
+          Monitor competitor pricing, volatility, and arbitrage windows.
+        </p>
       </div>
     </aside>
   );
