@@ -1,5 +1,4 @@
 import { ScrapeButton } from "@/components/products/scrape-button";
-import { Badge } from "@/components/ui/badge";
 
 type DashboardHeaderProps = {
   productCount: number;
@@ -13,41 +12,44 @@ export function DashboardHeader({
   isLiveData,
 }: DashboardHeaderProps) {
   return (
-    <header className="flex flex-col gap-4 border-b border-border/60 pb-6 lg:flex-row lg:items-end lg:justify-between">
-      <div className="space-y-2">
+    <header className="flex flex-col gap-6 border-b border-dark-tremor-border pb-8 lg:flex-row lg:items-end lg:justify-between">
+      <div className="space-y-3">
         <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="secondary" className="w-fit">
-            Live Market Intelligence
-          </Badge>
-          <Badge
-            variant="outline"
+          <span className="rounded-tremor-small bg-dark-tremor-background-subtle px-2 py-1 text-tremor-label font-medium text-dark-tremor-content-emphasis">
+            Market Intelligence
+          </span>
+          <span
             className={
               isLiveData
-                ? "border-emerald-500/30 text-emerald-300"
-                : "border-amber-500/30 text-amber-300"
+                ? "rounded-tremor-small bg-emerald-400/10 px-2 py-1 text-tremor-label font-medium text-emerald-400"
+                : "rounded-tremor-small bg-amber-400/10 px-2 py-1 text-tremor-label font-medium text-amber-400"
             }
           >
-            {isLiveData ? "Supabase connected" : "Configure Supabase"}
-          </Badge>
+            {isLiveData ? "Live data" : "Awaiting connection"}
+          </span>
         </div>
-        <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">
+        <h1 className="text-2xl font-semibold tracking-tight text-dark-tremor-content-strong sm:text-3xl">
           Competitor Price Intelligence
         </h1>
-        <p className="max-w-2xl text-sm text-muted-foreground md:text-base">
-          30-day price trends, volatility metrics, and arbitrage spreads across
+        <p className="max-w-2xl text-tremor-default leading-6 text-dark-tremor-content">
+          30-day price bands, volatility exposure, and arbitrage spreads across
           tracked competitor listings.
         </p>
       </div>
-      <div className="flex flex-wrap items-end gap-3">
-        <div className="rounded-xl border border-border/60 bg-card/70 px-4 py-3 backdrop-blur">
-          <p className="text-muted-foreground">Products</p>
-          <p className="text-2xl font-semibold">{productCount}</p>
+      <div className="flex flex-wrap items-end gap-4">
+        <div className="min-w-28 rounded-tremor-default border border-dark-tremor-border bg-dark-tremor-background px-4 py-3">
+          <p className="text-tremor-label text-dark-tremor-content">Products</p>
+          <p className="text-tremor-title font-semibold text-dark-tremor-content-strong">
+            {productCount}
+          </p>
         </div>
-        <div className="rounded-xl border border-border/60 bg-card/70 px-4 py-3 backdrop-blur">
-          <p className="text-muted-foreground">Snapshots</p>
-          <p className="text-2xl font-semibold">{snapshotCount}</p>
+        <div className="min-w-28 rounded-tremor-default border border-dark-tremor-border bg-dark-tremor-background px-4 py-3">
+          <p className="text-tremor-label text-dark-tremor-content">Snapshots</p>
+          <p className="text-tremor-title font-semibold text-dark-tremor-content-strong">
+            {snapshotCount}
+          </p>
         </div>
-        <ScrapeButton label="Run Market Scan" variant="default" size="default" />
+        <ScrapeButton label="Run market scan" variant="default" size="default" />
       </div>
     </header>
   );
