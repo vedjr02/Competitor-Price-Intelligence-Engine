@@ -17,9 +17,7 @@ export function GoogleSignInButton({ nextPath = "/dashboard" }: GoogleSignInButt
     setError(null);
 
     const supabase = createBrowserSupabaseClient();
-    const siteUrl =
-      process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ??
-      window.location.origin;
+    const siteUrl = window.location.origin.replace(/\/$/, "");
 
     const { error: signInError } = await supabase.auth.signInWithOAuth({
       provider: "google",
